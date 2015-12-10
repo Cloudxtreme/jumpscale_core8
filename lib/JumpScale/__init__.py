@@ -35,7 +35,7 @@ class Loader(object):
 
     def __init__(self, name, extrasname=None, module=None, extrasmodule=None):
         self.__doc__ = name
-        self.__extrasdoc = extrasname
+        self.__extrasdoc = extrasname if isinstance(extrasname, str) else extrasname.__package__
         self._module = module
         self._extrasmodule = extrasmodule
         if inspect.ismodule(module):
@@ -50,6 +50,7 @@ class Loader(object):
 
         if not self._file and not self._extrasfile:
             self._file = __file__
+            self._extrasfile = extrasname.__file__ if extrasname else None
 
         self._dir = os.path.dirname(self._file) if self._file else None
         self._extrasdir = os.path.dirname(self._extrasfile) if self._extrasfile else None
@@ -110,7 +111,7 @@ class Loader(object):
 
 locationbases = {}
 import JumpScaleExtras
-j = Loader(__package__, JumpScaleExtras.__package__)
+j = Loader(__package__, JumpScaleExtras)
 
 from .InstallTools import InstallTools, Installer
 j.do = InstallTools()
