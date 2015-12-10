@@ -2,7 +2,7 @@
 
 from JumpScale import j
 
-j.application.start("jsshell")
+# j.application.start("jsshell")
 
 import sys
 if len(sys.argv)==2:
