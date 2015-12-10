@@ -87,26 +87,35 @@ class Loader(object):
     def __dir__(self):
         members = list()
         extramembers = list()
+
         if self._extrasmodule:
             extramembers += [x[0] for x in inspect.getmembers(self._extrasmodule, inspect.isfunction)]
             if '__init' in extramembers:
                 self._extrasmodule = getattr(self._extrasmodule, '__init')()
                 extramembers = dir(self._extrasmodule)
+
         if self._module:
             members += [x[0] for x in inspect.getmembers(self._module, inspect.isfunction)]
             if '__init' in members:
                 self._module = getattr(self._module, '__init')()
                 members = dir(self._module)
 
-        if not members and self._dir:
-            for filename in os.listdir(self._dir):
-                if os.path.isdir(os.path.join(self._dir, filename)):
-                    members.append(filename)
-
         if not extramembers and self._extrasdir:
             for filename in os.listdir(self._extrasdir):
                 if os.path.isdir(os.path.join(self._extrasdir, filename)):
                     extramembers.append(filename)
+            extramembers.remove('__pycache__') if '__pycache__' in extramembers else extramembers
+            if not extramembers:
+                extramembers = dir(self._extrasmodule)
+
+        if not members and self._dir:
+            for filename in os.listdir(self._dir):
+                if os.path.isdir(os.path.join(self._dir, filename)):
+                    members.append(filename)
+            members.remove('__pycache__') if '__pycache__' in members else members
+            if not members:
+                members = dir(self._module)
+
         members.extend(extramembers)
         return members
 
