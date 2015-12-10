@@ -89,8 +89,14 @@ class Loader(object):
         extramembers = list()
         if self._extrasmodule:
             extramembers += [x[0] for x in inspect.getmembers(self._extrasmodule, inspect.isfunction)]
+            if '__init' in extramembers:
+                self._extrasmodule = getattr(self._extrasmodule, '__init')()
+                extramembers = dir(self._extrasmodule)
         if self._module:
             members += [x[0] for x in inspect.getmembers(self._module, inspect.isfunction)]
+            if '__init' in members:
+                self._module = getattr(self._module, '__init')()
+                members = dir(self._module)
 
         if not members and self._dir:
             for filename in os.listdir(self._dir):
