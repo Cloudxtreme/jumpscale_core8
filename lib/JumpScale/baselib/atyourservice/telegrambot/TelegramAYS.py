@@ -1,4 +1,5 @@
 from JumpScale import j
+import telegram
 from telegram import Updater
 from telegram.dispatcher import run_async
 import time
@@ -223,7 +224,7 @@ class TelegramAYS():
 		username = update.message.from_user.username
 		chatid = update.message.chat_id
 
-		for project in projects:
+		for project in projects:			
 			if not project in self._getProjects(username):
 				message = "Sorry, I can't find any project named `%s` :/" % project
 				bot.sendMessage(chat_id=chatid, text=message, parse_mode="Markdown")
@@ -269,7 +270,6 @@ class TelegramAYS():
 		bot.sendMessage(chat_id=chatid, text=message, parse_mode="Markdown")
 	
 	
-	
 	def _blueprintsList(self, bot, update, project):
 		username = update.message.from_user.username
 		blueprints = j.sal.fs.listFilesInDir(self._currentBlueprintsPath(username))
@@ -287,7 +287,19 @@ class TelegramAYS():
 	def _blueprintsDelete(self, bot, update, project, names):
 		username = update.message.from_user.username
 		
+		# ays uninstall before
+		self._ays_sync(bot, update, args=['do', 'uninstall'])
+		
 		for name in names:
+			if name == "*" or name == "all":
+				blueprints = j.sal.fs.listFilesInDir(self._currentBlueprintsPath(username))
+				for blueprint in blueprints:
+					j.sal.fs.remove(blueprint)
+				
+				ln = len(blueprints)
+				message = "%d blueprint%s removed" % (ln, "s" if ln > 1 else "")
+				return bot.sendMessage(chat_id=update.message.chat_id, text=message)
+			
 			blueprint = '%s/%s' % (self._blueprintsPath(username, project), name)
 			
 			print('[+] deleting: %s' % blueprint)
@@ -301,6 +313,25 @@ class TelegramAYS():
 			
 			message = "Blueprint `%s` removed from `%s`" % (name, project)
 			bot.sendMessage(chat_id=update.message.chat_id, text=message, parse_mode="Markdown")
+	
+	def _blueprintsDeletePrompt(self, bot, update, project):
+		username = update.message.from_user.username
+		blueprints = j.sal.fs.listFilesInDir(self._currentBlueprintsPath(username))
+		
+		bluelist = []
+		
+		for bluepath in blueprints:
+			blueprint = j.sal.fs.getBaseName(bluepath)
+			bluelist.append('/blueprint delete %s' % blueprint)
+		
+		if len(bluelist) == 0:
+			return bot.sendMessage(chat_id=update.message.chat_id, text="Sorry, this repository doesn't contains blueprint for now, upload me some of them !")
+		
+		bluelist.append("I'm done")
+		
+		custom_keyboard = [bluelist]
+		reply_markup = telegram.ReplyKeyboardMarkup(custom_keyboard, resize_keyboard=True)
+		return bot.sendMessage(chat_id=update.message.chat_id, text="Which blueprint do you want to delete ?", reply_markup=reply_markup)
 	
 	def _blueprintGetAll(self, bot, update, project):		
 		files = j.sal.fs.listFilesInDir(self._blueprintsPath(username, project))
@@ -389,7 +420,9 @@ class TelegramAYS():
 		
 		# delete a blueprints
 		if (args[0] == "delete" or args[0] == "remove") and len(args) == 1:
-			return bot.sendMessage(chat_id=update.message.chat_id, text="Ehm, need to give me a blueprint name")
+			# return bot.sendMessage(chat_id=update.message.chat_id, text="Ehm, need to give me a blueprint name")
+			# keyboard
+			return self._blueprintsDeletePrompt(bot, update, self._currentProject(username))
 			
 		if (args[0] == "delete" or args[0] == "remove") and len(args) > 1:
 			args.pop(0)
@@ -401,8 +434,8 @@ class TelegramAYS():
 		# retreive blueprint
 		return self._blueprintGet(bot, update, args[0], self._currentProject(username))
 	
-	@run_async
-	def ays(self, bot, update, **kwargs):
+	
+	def _ays_sync(self, bot, update, args):
 		username = update.message.from_user.username
 		
 		print('[+] ays commands for: %s' % username)
@@ -422,20 +455,55 @@ class TelegramAYS():
 		
 		# using list for auto-escape
 		ays = 'ays'
-		command = [ays] + kwargs['args']
+		command = [ays] + args
 		
 		self.executeProgressive(bot, update, command)		
 		j.sal.fs.changeDir(previous)
 		
 	@run_async
+	def ays(self, bot, update, **kwargs):
+		return self._ays_sync(bot, update, kwargs['args'])
+		
+	@run_async
 	def message(self, bot, update, **kwargs):
-		print('[+] %s [%s]: %s' % (update.message.from_user.username, update.message.chat_id, update.message.text))
+		username = update.message.from_user.username
+		print('[+] %s [%s]: %s' % (username, update.message.chat_id, update.message.text))
 		
 		if getattr(update.message, 'document', None):
 			self.document(bot, update)
 			return
 		
-		bot.sendMessage(chat_id=update.message.chat_id, text="Sorry, I can only match on some commands. Try /help to have more help :)")
+		if update.message.text == "I'm done":
+			reply_markup = telegram.ReplyKeyboardHide()
+			return bot.sendMessage(chat_id=update.message.chat_id, text="Fine", reply_markup=reply_markup)
+		
+		# check if it's a blueprint
+		try:
+			yaml = j.data.serializer.yaml.loads(update.message.text)
+			custom = '99_custom.yaml'
+			
+			if not self._currentProject(username):
+				message = "You need to create a project before sending me blueprint. See /project"
+				return bot.sendMessage(chat_id=update.message.chat_id, text=message)
+			
+			# saving blueprint
+			local = '%s/%s' % (self._currentBlueprintsPath(username), custom)
+			j.sal.fs.writeFile(local, update.message.text)
+			
+			message = "This look like a blueprint, I saved it to: %s. Let me initialize it." % custom
+			bot.sendMessage(chat_id=update.message.chat_id, text=message)
+			
+			return self._ays_sync(bot, update, ["init"])
+		
+		except e:
+			print(e)
+			print("[-] not a blueprint message")
+			pass
+			
+		message = "Sorry, I can only match on some commands. Try /help to have more help :)"
+		# reply_markup = telegram.ReplyKeyboardHide()
+		# bot.sendMessage(chat_id=update.message.chat_id, text=message, reply_markup=reply_markup)
+		bot.sendMessage(chat_id=update.message.chat_id, text=message)
 
 	def help(self, bot, update):
 		message = [
@@ -456,6 +524,7 @@ class TelegramAYS():
 			"*/blueprint*: will manage the project's blueprints",
 			" - `/blueprint list`: will show you your project's blueprint saved",
 			" - `/blueprint delete [name]`: will delete the blueprint `[name]`",
+			" - `/blueprint delete all`: will delete all the blueprints in your project",
 			" - `/blueprint [name]`: will show you the content of the blueprint `[name]`",
 			"",
 			"When your blueprints are ready, you can go further:",
