@@ -255,14 +255,15 @@ class CockpitDeployer:
         self.printInfo('cloning template repo (%s)' % self.TEMPLATE_REPO)
         template_repo_path = j.do.pullGitRepo(url=self.TEMPLATE_REPO, executor=cuisine.executor)
         self.printInfo('cloned in %s' % template_repo_path)
-
         self.printInfo("creation of cockpit repo")
         _, _, _, _, cockpit_repo_path, _ = j.do.getGitRepoArgs(self.args.repo_url)
         if j.sal.fs.exists(cockpit_repo_path):
+            j.sal.fs.changeDir("%s/.." % cockpit_repo_path)
             j.sal.fs.removeDirTree(cockpit_repo_path)
         j.sal.fs.createDir(cockpit_repo_path)
+        j.sal.fs.changeDir(cockpit_repo_path)
         cuisine.core.run('git init %s' % cockpit_repo_path)
-        cuisine.core.run('git remote remove origin;git remote add origin %s' % self.args.repo_url)
+        cuisine.core.run('git remote add origin %s' % self.args.repo_url)
 
         src = j.sal.fs.joinPaths(template_repo_path, 'ays_repo')
         dest = j.sal.fs.joinPaths(cockpit_repo_path, 'ays_repo')
@@ -321,20 +322,20 @@ class CockpitDeployer:
         self.printInfo("Start configuration of cockpit")
 
         self.printInfo("Configuration of influxdb")
-        container_cuisine.builder._start_influxdb()
+        container_cuisine.apps.influxdb.start()
 
         self.printInfo("Configuration of grafana")
-        container_cuisine.builder._startGrafana()
+        container_cuisine.apps.grafana.start()
         cfg = container_cuisine.core.file_read('$cfgDir/grafana/grafana.ini')
         cfg = cfg.replace('domain = localhost', 'domain = %s' % dns_name)
         cfg = cfg.replace('root_url = %(protocol)s://%(domain)s:%(http_port)s/', 'root_url = %(protocol)s://%(domain)s:%(http_port)s/grafana')
         container_cuisine.core.file_write('$cfgDir/grafana/grafana.ini', cfg)
 
         self.printInfo("Configuration of mongodb")
-        container_cuisine.builder._startMongodb()
+        container_cuisine.apps.mongodb.start()
 
         self.printInfo("Configuration of g8os controller")
-        container_cuisine.builder._startController()
+        container_cuisine.apps.controller.start()
 
         self.printInfo("Configuration of cockpit portal")
         # start, do the linking of minimum portal and set admin passwd
