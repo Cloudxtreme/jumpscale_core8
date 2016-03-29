@@ -256,14 +256,12 @@ class CockpitDeployer:
         template_repo_path = j.do.pullGitRepo(url=self.TEMPLATE_REPO, executor=cuisine.executor)
         self.printInfo('cloned in %s' % template_repo_path)
         self.printInfo("creation of cockpit repo")
-        _, _, _, _, cockpit_repo_path, _ = j.do.getGitRepoArgs(self.args.repo_url)
+        _, _, _, _, cockpit_repo_path, cockpit_repo_remote = j.do.getGitRepoArgs(self.args.repo_url, ssh=True)
         if j.sal.fs.exists(cockpit_repo_path):
-            j.sal.fs.changeDir("%s/.." % cockpit_repo_path)
             j.sal.fs.removeDirTree(cockpit_repo_path)
         j.sal.fs.createDir(cockpit_repo_path)
-        j.sal.fs.changeDir(cockpit_repo_path)
         cuisine.core.run('git init %s' % cockpit_repo_path)
-        cuisine.core.run('git remote add origin %s' % self.args.repo_url)
+        cuisine.core.run('cd %s;git remote add origin %s' % (cockpit_repo_path, cockpit_repo_remote))
 
         src = j.sal.fs.joinPaths(template_repo_path, 'ays_repo')
         dest = j.sal.fs.joinPaths(cockpit_repo_path, 'ays_repo')
@@ -290,27 +288,29 @@ class CockpitDeployer:
         if '18384' not in exists_pf:
             machine.create_portforwarding(18384, 18384)  # temporary create portforwardings for syncthing
 
-        self.printInfo('Authorize ssh key into VM')
+        self.logger.info('Authorize ssh key into VM')
         # authorize ssh into VM
         ssh_exec.cuisine.ssh.authorize('root', key_pub)
         # reconnect as root
         ssh_exec = j.tools.executor.getSSHBased(ssh_exec.addr, ssh_exec.port, 'root')
 
-        self.printInfo("Start installation of cockpit")
-        self.printInfo("installation of docker")
+        self.logger.info("Start installation of cockpit")
         ssh_exec.cuisine.docker.install()
+        self.logger.info("installation of Jumpscale")
         ssh_exec.cuisine.installer.jumpscale8()
+        self.logger.info("Configure environment")
         ssh_exec.cuisine.bash.environSet('GOPATH', '/optvar/go')
         ssh_exec.cuisine.bash.addPath('/optvar/go/bin')
         ssh_exec.cuisine.bash.addPath('/usr/local/go/bin')
+        self.logger.info("Creation of docker container")
         ssh_exec.cuisine.core.run('$binDir/jsdocker pull -i jumpscale/g8cockpit', profile=True)
         container_conn_str = ssh_exec.cuisine.docker.ubuntu(name='g8cockpit', image='jumpscale/g8cockpit', ports="80:80 443:443 18384:18384", volumes="/optvar/data:/optvar/data", pubkey=key_pub, aydofs=False)
 
         addr, port = container_conn_str.split(":")
         if port not in exists_pf:
             machine.create_portforwarding(port, port) # expose ssh of docker
-        container_cuisine = j.tools.cuisine.get(j.tools.executor.getSSHBased(ssh_exec.addr, int(port), passwd="gig1234"))
-        self.printInfo("Update jumpscale repos in cockpit container")
+        container_cuisine = j.tools.cuisine.get("%s:%s" % (ssh_exec.addr, port))
+        self.logger.info("Update jumpscale repos in cockpit container")
         repos = [
             'https://github.com/Jumpscale/ays_jumpscale8.git',
             'https://github.com/Jumpscale/jumpscale_core8.git',
@@ -381,15 +381,15 @@ class CockpitDeployer:
         }
         r = j.atyourservice.getRecipe('cockpitconfig')
         r.newInstance(args=args)
-        git_cl.push(Force=True)
+        cuisine.core.run('cd %s; git push -f origin master' % cockpit_repo_path)
 
         content = "grid.id = %d\nnode.id = 0" % int(self.args.gid)
         container_cuisine.core.file_append(location="$hrdDir/system/system.hrd", content=content)
 
-        j.sal.fs.copyFile("/opt/code/github/0-complexity/g8cockpit/scripts/portforwards.py", cockpit_repo_path, createDirIfNeeded=False, overwriteFile=True)
-        dest = 'root@%s:%s' % (container_cuisine.executor.addr, cockpit_repo_path)
-        container_cuisine.core.dir_ensure(cockpit_repo_path)
-        j.do.copyTree(cockpit_repo_path, dest, sshport=container_cuisine.executor.port, ssh=True)
+        # j.sal.fs.copyFile("portforwards.py", cockpit_repo_path, createDirIfNeeded=False, overwriteFile=True)
+        # dest = 'root@%s:%s' % (container_cuisine.executor.addr, cockpit_repo_path)
+        # container_cuisine.core.dir_ensure(cockpit_repo_path)
+        # j.do.copyTree(cockpit_repo_path, dest, sshport=container_cuisine.executor.port, ssh=True)
 
         self.printInfo("\nCockpit deployed")
         self.printInfo("SSH: ssh root@%s -p %s" % (dns_name, container_cuisine.executor.port))
