@@ -99,7 +99,7 @@ class Controller():
             synccl = j.clients.syncthing.get(addr="localhost", port=18384, apikey=apikey)
 
         jumpscripts_path = self.cuisine.core.args_replace("$cfgDir/controller/jumpscripts")
-        timeout = 30
+        timeout = 60
         start = time.time()
         syn_id = None
         while time.time() < (start + timeout) and syn_id is None:

@@ -309,7 +309,7 @@ class CockpitDeployer:
         addr, port = container_conn_str.split(":")
         if port not in exists_pf:
             machine.create_portforwarding(port, port) # expose ssh of docker
-        container_cuisine = j.tools.cuisine.get("%s:%s" % (ssh_exec.addr, port))
+        container_cuisine = j.tools.cuisine.get(j.tools.executor.getSSHBased(ssh_exec.addr, int(port), passwd="gig1234"))
         self.printInfo("Update jumpscale repos in cockpit container")
         repos = [
             'https://github.com/Jumpscale/ays_jumpscale8.git',
@@ -322,6 +322,7 @@ class CockpitDeployer:
         self.printInfo("Start configuration of cockpit")
 
         self.printInfo("Configuration of influxdb")
+
         container_cuisine.apps.influxdb.start()
 
         self.printInfo("Configuration of grafana")
@@ -380,12 +381,12 @@ class CockpitDeployer:
         }
         r = j.atyourservice.getRecipe('cockpitconfig')
         r.newInstance(args=args)
-        git_cl.push()
+        git_cl.push(Force=True)
 
         content = "grid.id = %d\nnode.id = 0" % int(self.args.gid)
         container_cuisine.core.file_append(location="$hrdDir/system/system.hrd", content=content)
 
-        j.sal.fs.copyFile("portforwards.py", cockpit_repo_path, createDirIfNeeded=False, overwriteFile=True)
+        j.sal.fs.copyFile("/opt/code/github/0-complexity/g8cockpit/scripts/portforwards.py", cockpit_repo_path, createDirIfNeeded=False, overwriteFile=True)
         dest = 'root@%s:%s' % (container_cuisine.executor.addr, cockpit_repo_path)
         container_cuisine.core.dir_ensure(cockpit_repo_path)
         j.do.copyTree(cockpit_repo_path, dest, sshport=container_cuisine.executor.port, ssh=True)
