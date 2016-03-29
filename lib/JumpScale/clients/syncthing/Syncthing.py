@@ -18,6 +18,7 @@ class Syncthing:
 class SyncthingClient:
 
     def __init__(self, addr="localhost",port=22001,sshport=22,rootpasswd="js111js",apikey="js111js"):
+        self._session = requests.session()
         addr=addr.lower()
         if addr=="127.0.0.1":
             addr="localhost"
@@ -285,32 +286,20 @@ class SyncthingClient:
             for key in keys:
                 url += '&%s=%s' % (key, request_body[key])
 
-
-        counter=0
-        ok=False
-        print(url)
-        while ok==False:
+        timeout = 10
+        start = time.time()
+        ok = False
+        while time.time() < (start + timeout) and ok is False:
             try:
                 if get:
-                    r = requests.get(url, headers=headers, timeout=2)
+                    r = self._session.get(url, headers=headers, timeout=2)
                 else:
-                    r = requests.post(url, headers=headers,json=data, timeout=2)
-                ok=True
+                    r = self._session.post(url, headers=headers,json=data, timeout=2)
+                ok = True
             except Exception as e:
-                print("Warning, Error in API call, will retry:\n%s"%e)
-                # except requests.packages.urllib3.exceptions.ProtocolError:
-                # from IPython import embed
-                # print "DEBUG NOW ooosss"
-                # embed()
-                print("retry API CALL %s"%url)
-                counter+=1
-                time.sleep(0.1)
+                time.sleep(0.5)
 
-                if counter>10:
-                    raise j.exceptions.RuntimeError('Syncthing is not responding. Exiting.')
-
-
-        if r.ok==False:
+        if r.ok is False:
             print("%s"%(url))
             print(endpoint)
             print(request_body)
