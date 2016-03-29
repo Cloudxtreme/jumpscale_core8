@@ -238,5 +238,5 @@ return dashboard;
                     continue
                 break
             except requests.exceptions.ConnectionError:
-                time.sleep(0.1)
+                time.sleep(1)
                 pass
