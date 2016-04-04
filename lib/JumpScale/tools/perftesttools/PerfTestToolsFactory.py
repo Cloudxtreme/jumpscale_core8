@@ -91,7 +91,7 @@ class PerfTestToolsFactory(object):
         disks=[item.strip() for item in os.environ["disks"].split(",") if item.strip()!=""]
 
         cpu=os.environ["cpu"]=='1'
-        redis=j.clients.redis.getRedisClient(os.environ["redishost"], os.environ["redisport"])
+        redis=j.clients.redis.get(os.environ["redishost"], os.environ["redisport"])
 
         m=MonitorTools(redis,nodename)
         m.startMonitorLocal(disks,cpu,net)
@@ -101,7 +101,7 @@ class PerfTestToolsFactory(object):
         will dump redis stats into influxdb & env is used to get config parameters from
         influxdb is always on localhost & std login/passwd
         """
-        redis=j.clients.redis.getRedisClient(os.environ["redishost"], os.environ["redisport"])
+        redis=j.clients.redis.get(os.environ["redishost"], os.environ["redisport"])
         d=InfluxDumper(os.environ["testname"], redis, server=os.environ['idbhost'],
                        port=os.environ['idbport'], login=os.environ['idblogin'], passwd=os.environ['idbpasswd'])
         d.start()

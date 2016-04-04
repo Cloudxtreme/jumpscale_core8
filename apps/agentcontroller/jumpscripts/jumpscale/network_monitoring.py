@@ -26,7 +26,7 @@ def action(redisconnection):
         return
     addr = redisconnection.split(':')[0]
     port = int(redisconnection.split(':')[1])
-    redis_client = j.clients.redis.getRedisClient(addr, port)
+    redis_client = j.clients.redis.get(addr, port)
     hostname =j.sal.nettools.getHostname()
     aggregator = j.tools.aggregator.getClient(redis_client,  hostname)
     tags = j.data.tags.getTagString(tags={

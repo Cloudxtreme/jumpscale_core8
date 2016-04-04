@@ -2466,6 +2466,7 @@ exec python3 -q "$@"
             do.executeInteractive("pip3 install xonsh")
             do.executeInteractive("pip3 install pudb")
             do.executeInteractive("pip3 install tmuxp")
+            do.executeInteractive("pip3 install colorlog")
 
             if sys.platform.startswith('win'):
                 raise RuntimeError("Cannot find JSBASE, needs to be set as env var")

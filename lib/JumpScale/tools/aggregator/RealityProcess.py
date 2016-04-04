@@ -12,23 +12,23 @@ class RealitProcess(object):
     def __init__(self):
         self.__jslocation__ = "j.tools.realityprocess"
 
-    def influxpump(self, influxdb, cidr='127.0.0.1', port=7777):
+    def influxpump(self, influxdb, cidr='127.0.0.1', ports=[7777]):
         """
         will dump redis stats into influxdb(s)
         get connections from j.jumpscale.clients...
         """
 
-        InfluxDumper(influxdb, cidr=cidr, port=port).start()
+        InfluxDumper(influxdb, cidr=cidr, ports=ports).start()
 
-    def monogopump(self, cidr='127.0.0.1', port=7777):
+    def monogopump(self, cidr='127.0.0.1', ports=[7777]):
         """
         will dump redis stats into influxdb(s)
         get connections from j.jumpscale.clients...
         """
 
-        MongoDumper(cidr=cidr, port=port).start()
+        MongoDumper(cidr=cidr, ports=ports).start()
 
-    def ecodump(self, cidr='127.0.0.1', port=7777):
+    def ecodump(self, cidr='127.0.0.1', ports=[7777]):
         """
         Will dump redis ecos into mongodb
 
@@ -36,9 +36,9 @@ class RealitProcess(object):
         :param port:
         :return:
         """
-        ECODumper(cidr, port).start()
+        ECODumper(cidr, ports).start()
 
-    def logsdump(self, cidr='127.0.0.1', port=7777):
+    def logsdump(self, cidr='127.0.0.1', ports=[7777]):
         """
         Will dump redis logs into tar files.
 

@@ -1,7 +1,7 @@
 from JumpScale import j
 import time
 
-redis=j.clients.redis.getRedisClient("127.0.0.1", 9999)
+redis=j.clients.redis.get("127.0.0.1", 9999)
 
 class Node():
     def __init__(self,name,args={}):

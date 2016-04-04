@@ -519,7 +519,7 @@ class Client(object):
     """
     def __init__(self, address='localhost', port=6379, password=None):
         # Initializing redis client
-        self._redis = j.clients.redis.getRedisClient(ipaddr=address, port=port, password=password, fromcache=True)
+        self._redis = j.clients.redis.get(ipaddr=address, port=port, password=password, fromcache=True)
         # Check the connectivity
         self._redis.ping()
 

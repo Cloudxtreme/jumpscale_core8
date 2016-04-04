@@ -7,6 +7,8 @@ import io
 
 class AggregatorClientTest(object):
     TEST_INFLUX_DB = "test"
+    def __init__(self):
+        self.logger = j.logger.get(self.__class__.__name__)
 
     def _buildReport(self, actuals, reported):
         buffer = io.StringIO()
@@ -43,7 +45,7 @@ class AggregatorClientTest(object):
 
         return buffer.getvalue()
 
-    def statstest(self, aggregator, influxdb, points=1000000, minutes=5):
+    def statstest(self, aggregator, influxdb, points=100000, minutes=5):
         """
         Stats test will try to flood the redis instance with statistics data. and then generate a report with
         how many reports it did per second, and a sheet with the expected averages and times
@@ -61,6 +63,10 @@ class AggregatorClientTest(object):
         # 1- Make sure to clean all the data stores (redis and influx) to avoid noise from previous tests.
         aggregator.redis.flushall()
         aggregator.redis.flushdb()
+        for db in influxdb.get_list_database():
+            if db['name'] == self.TEST_INFLUX_DB:
+                influxdb.drop_database(self.TEST_INFLUX_DB)
+        influxdb.create_database(self.TEST_INFLUX_DB)
 
         # 2- round the now to the nearist minute
         now = (int(time.time()) / 60) * 60
@@ -81,6 +87,8 @@ class AggregatorClientTest(object):
             start_time = time.time()
             totals = 0
             max = 0
+            self.logger.info("Injecting %s points for minute %s", points, minute)
+            start = time.time()
             for i in range(points):
                 val = random.randint(lower, upper)
                 if val > max:
@@ -88,7 +96,11 @@ class AggregatorClientTest(object):
                 totals += val
                 # always use the `now` as time stamp so we have control which values are lying in this minute
                 aggregator.measure(key, "random", "mode:test", val, timestamp=stamp)
+                if time.time() - start > 5:
+                    self.logger.info("Injected %d%% points for minute %s", (i/points) * 100, minute)
+                    start = time.time()
 
+            self.logger.info("Finished %s points for minute %s", points, minute)
             rate = points / (time.time() - start_time)
             # 4b- Keep track of the actual reported values for comparison later on with the expected values.
             actuals.append({
@@ -111,7 +123,7 @@ class AggregatorClientTest(object):
         # force the dumper to find the test redis instance. By allowing it to only search the given redis host
         # for active redis instances.
 
-        dumper = InfluxDumper(influxdb, self.TEST_INFLUX_DB, cidr=redis_host, port=port)
+        dumper = InfluxDumper(influxdb, self.TEST_INFLUX_DB, cidr=redis_host, ports=[port])
         # DO NOT CALL dumper.start() or the actuall dumper worker processes will start. Instead we simulate the process
         # by calling the dumper.dump method directly. given the `found` redis connection. Read InfluxDumper doc string
         # for more info
@@ -138,3 +150,10 @@ class AggregatorClientTest(object):
     #
 
 
+if __name__ == '__main__':
+    from AggregatorClient import AggregatorClient
+    redis = j.clients.redis.get('127.0.0.1', 6379)
+    influx = j.clients.influxdb.get()
+    aggregator = AggregatorClient(redis, 'mynode')
+    tester = AggregatorClientTest()
+    tester.statstest(aggregator, influx)

@@ -33,7 +33,7 @@ class BlobStorClientFake:
 
         self.errors=[]
 
-        self.redis = j.clients.redis.getRedisClient('localhost', 9999)
+        self.redis = j.clients.redis.get('localhost', 9999)
         #weedfs_host = j.application.config.get('weedfs.host', default='127.0.0.1')
         #weedfs_port = j.application.config.get('weedfs.port', default=9333)
         self.weed_master = WeedMaster()

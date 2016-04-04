@@ -13,7 +13,7 @@ class RedisKeyValueStore(KeyValueStoreBase):
 
     def __init__(self,namespace="",host='localhost',port=7771,db=0,password='', serializers=[],masterdb=None, changelog=True):
 
-        self.redisclient=j.clients.redis.getRedisClient(host, port,password=password)
+        self.redisclient=j.clients.redis.get(host, port,password=password)
         self.redisclient.port=port
         self.redisclient.host=host
         self._changelog = changelog

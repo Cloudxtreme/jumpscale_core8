@@ -5,8 +5,8 @@ from JumpScale import j
 class ECODumper(Dumper.BaseDumper):
     QUEUE = 'queues:eco'
 
-    def __init__(self, cidr='127.0.0.1', port=7777):
-        super(ECODumper, self).__init__(cidr, port)
+    def __init__(self, cidr='127.0.0.1', ports=[7777]):
+        super(ECODumper, self).__init__(cidr, ports=ports)
 
     def dump(self, redis):
         """

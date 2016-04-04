@@ -17,7 +17,7 @@ class Aggregator(object):
         The tester instance is used to test stats aggregation and more.
 
         Example usage:
-        redis = j.clients.redis.getRedisClient('localhost', 6379)
+        redis = j.clients.redis.get('localhost', 6379)
         agg = j.tools.aggregator.getClient(redis, 'hostname')
         influx = j.clients.influxdb.get()
         tester = j.tools.aggregator.getTester()

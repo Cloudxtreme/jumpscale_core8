@@ -29,7 +29,7 @@ def action(redisconnection):
         return
     addr = redisconnection.split(':')[0]
     port = int(redisconnection.split(':')[1])
-    redis = j.clients.redis.getRedisClient(addr, port)
+    redis = j.clients.redis.get(addr, port)
 
     aggregator = j.tools.aggregator.getClient(redis,  hostname)
     tags = j.data.tags.getTagString(tags={

@@ -50,7 +50,7 @@ class NodeBase(MonitorTools):
         if self._redis is not None:
             return self._redis
         print("connect redis: %s:%s"%(j.tools.perftesttools.monitorNodeIp, 9999))
-        self._redis = j.clients.redis.getGeventRedisClient(self.redis_host, self.redis-p)
+        self._redis = j.clients.redis.get(self.redis_host, self.redis_port)
 
 
     def setInfluxdb(self, host, port, login='root', password='root'):

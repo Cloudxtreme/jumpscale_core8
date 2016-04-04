@@ -58,12 +58,6 @@ class Redis(redis.Redis):
             client = redis.Redis(**self.connection_pool.connection_kwargs)
             return RedisQueue(client, name, namespace=namespace)
 
-class GeventRedis(Redis):
-    def hgetall(self, name):
-        "Return a Python dict of the hash's name/value pairs"
-        d = self.execute_command('HGETALL', name)
-        return list(itertools.chain(*list(zip(list(d.keys()), list(d.values())))))
-
 class RedisFactory:
 
     """
@@ -71,33 +65,20 @@ class RedisFactory:
 
     def __init__(self):
         self.__jslocation__ = "j.clients.redis"
-        self.gredis = {}
-        self.redis = {}
-        self.gredisq = {}
-        self.redisq = {}
+        self._redis = {}
+        self._redisq = {}
         self._config = {}
-        self.cuisine=j.tools.cuisine.get()
-        self.executor=self.cuisine.executor
+        self._cuisine = j.tools.cuisine.get()
 
-    def getGeventRedisClient(self, ipaddr, port, fromcache=True,password=""):
-        #from gevent.monkey import patch_socket
-        #patch_socket()        
-        if not fromcache:
-            return GeventRedis(ipaddr, port,password=password) 
-        key = "%s_%s" % (ipaddr, port)
-        if key not in self.gredis:
-            self.gredis[key] = GeventRedis(ipaddr, port,password=password)
-        return self.gredis[key]
-
-    def getRedisClient(self, ipaddr, port, password="", fromcache=True):
+    def get(self, ipaddr, port, password="", fromcache=True):
         key = "%s_%s" % (ipaddr, port)
         if not fromcache:
             return Redis(ipaddr, port, password=password)
-        if key not in self.redis:
-            self.redis[key] = Redis(ipaddr, port, password=password)
-        return self.redis[key]
+        if key not in self._redis:
+            self._redis[key] = Redis(ipaddr, port, password=password)
+        return self._redis[key]
 
-    def getByInstance(self, instance, gevent=False):
+    def getByInstance(self, instance):
 
         if not instance in self._config:
             # hrd = j.application.getAppInstanceHRD(name="redis", instance=instance, parent=None)
@@ -107,52 +88,15 @@ class RedisFactory:
             password = None if not password.strip() else password
             self._config[instance] = {'password': password, 'port':port}
 
-        if gevent:
-            rediscl = GeventRedis('localhost', self._config[instance]['port'], password=self._config[instance]['password'])
-        else:
-            rediscl = Redis('localhost', self._config[instance]['port'], password=self._config[instance]['password'])
-        return rediscl
+        return Redis('localhost', self._config[instance]['port'], password=self._config[instance]['password'])
 
-    def getRedisQueue(self, ipaddr, port, name, namespace="queues", fromcache=True):
+    def getQueue(self, ipaddr, port, name, namespace="queues", fromcache=True):
         if not fromcache:
-            return RedisQueue(self.getRedisClient(ipaddr, port, fromcache=False), name, namespace=namespace)
+            return RedisQueue(self.get(ipaddr, port, fromcache=False), name, namespace=namespace)
         key = "%s_%s_%s_%s" % (ipaddr, port, name, namespace)
-        if key not in self.redisq:
-            self.redisq[key] = RedisQueue(self.getRedisClient(ipaddr, port), name, namespace=namespace)
-        return self.redisq[key]
-
-    def getGeventRedisQueue(self, ipaddr, port, name, namespace="queues", fromcache=False):
-        fromcache = False  # @todo remove
-        if not fromcache:
-            return RedisQueue(self.getGeventRedisClient(ipaddr, port, False), name, namespace=namespace)
-        key = "%s_%s_%s_%s" % (ipaddr, port, name, namespace)
-        if key not in self.gredisq:
-            self.gredisq[key] = RedisQueue(self.getGeventRedisClient(ipaddr, port), name, namespace=namespace)
-        return self.gredisq[key]
-
-    # def checkAllInstances(self):
-    #     for pd in [item for item in j.tools.startupmanager.getProcessDefs("jumpscale") if item.name.find("redis")==0]:
-    #         pd.stop()
-    #         path=j.sal.fs.joinPaths(j.dirs.varDir,"redis",pd.name,"db","appendonly.aof")
-    #         if j.sal.fs.exists(path):
-    #             stats=j.sal.fs.statPath(path)
-    #             if stats.st_size!=0:                    
-    #                 cmd="%s/apps/redis/redis-check-aof --fix %s"%(j.dirs.base,path)
-    #                 j.sal.process.executeWithoutPipe(cmd)
-    #         pd.start()
-
-    # def emptyAllInstances(self):
-    #     for pd in [item for item in j.tools.startupmanager.getProcessDefs("jumpscale") if item.name.find("redis")==0]:
-    #         if pd.name=="redism" or pd.name=="rediskvs":
-    #             continue #nothing to do
-    #         pd.stop()
-    #         path=j.sal.fs.joinPaths(j.dirs.varDir,"redis",pd.name,"db")
-    #         print(("remove:%s"%path))
-    #         j.sal.fs.removeDirTree(path)
-    #         j.sal.fs.createDir(path)
-    #         path=j.sal.fs.joinPaths(j.dirs.varDir,"redis",pd.name,"redis.log")
-    #         j.sal.fs.remove(path)
-    #         pd.start()
+        if key not in self._redisq:
+            self._redisq[key] = RedisQueue(self.get(ipaddr, port), name, namespace=namespace)
+        return self._redisq[key]
 
     def getPort(self, name):
         _, cpath = self._getPaths(name)
@@ -176,20 +120,20 @@ class RedisFactory:
             return False
 
     def _getPaths(self, name):
-        dpath = j.sal.fs.joinPaths(self.cuisine.core.dir_paths["varDir"], 'redis', name)
+        dpath = j.sal.fs.joinPaths(self._cuisine.core.dir_paths["varDir"], 'redis', name)
         cpath = j.sal.fs.joinPaths(dpath, "redis.conf")
         return (dpath, cpath)
 
     def deleteInstance(self, name):
         # self.stopInstance(name)
         dpath, _ = self._getPaths(name)
-        self.cuisine.core.dir_remove(dpath)
+        self._cuisine.core.dir_remove(dpath)
 
     def emptyInstance(self, name):
         # self.stopInstance(name)
         dpath, _ = self._getPaths(name)
-        self.cuisine.core.dir_remove(dpath)
-        self.cuisine.core.dir_ensure(dpath)
+        self._cuisine.core.dir_remove(dpath)
+        self._cuisine.core.dir_ensure(dpath)
 
     def configureInstance(self, name, ip="localhost", port=6379, maxram=200, appendonly=True,snapshot=False,slave=(),ismaster=False,passwd=None,unixsocket=False):
         """
@@ -197,7 +141,7 @@ class RedisFactory:
         slave example: (192.168.10.10,8888,asecret)   (ip,port,secret)
         """
         cmd='sysctl vm.overcommit_memory=1'
-        self.cuisine.core.run(cmd, die=False, showout=False)
+        self._cuisine.core.run(cmd, die=False, showout=False)
 
         self.emptyInstance(name)
 
@@ -764,7 +708,7 @@ class RedisFactory:
         if port != "":
              port = "port %s" % port
         C = C.replace("$port", str(port))
-        C = C.replace("$vardir", self.cuisine.core.dir_paths["varDir"])
+        C = C.replace("$vardir", self._cuisine.core.dir_paths["varDir"])
         C = C.replace("$bind", ip)
 
         if ismaster:
@@ -804,6 +748,6 @@ class RedisFactory:
 
         dpath,cpath=self._getPaths(name)
         dbpath = j.sal.fs.joinPaths(dpath, "db")
-        self.cuisine.core.dir_ensure(dbpath)
-        self.cuisine.core.file_write(cpath, C)
+        self._cuisine.core.dir_ensure(dbpath)
+        self._cuisine.core.file_write(cpath, C)
 

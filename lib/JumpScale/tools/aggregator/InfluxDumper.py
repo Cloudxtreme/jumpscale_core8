@@ -11,7 +11,7 @@ class InfluxDumper(Dumper.BaseDumper):
     QUEUE_HOUR = 'queues:stats:hour'
     QUEUES = [QUEUE_MIN, QUEUE_HOUR]
 
-    def __init__(self, influx, database=None, cidr='127.0.0.1', port=7777):
+    def __init__(self, influx, database=None, cidr='127.0.0.1', ports=[7777]):
         """
         Create a new instance of influx dumper
 
@@ -24,7 +24,7 @@ class InfluxDumper(Dumper.BaseDumper):
         :param cidr: Network CIDR to scan for all redis instances that listen on the specified port
         :param port: Find all redis instances that listens on that port on the given CIDR
         """
-        super(InfluxDumper, self).__init__(cidr, port)
+        super(InfluxDumper, self).__init__(cidr, ports)
 
         self.influxdb=influx
 

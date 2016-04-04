@@ -1,7 +1,7 @@
 from JumpScale import j
 import copy
 
-redis=j.clients.redis.getRedisClient("127.0.0.1", 9999)
+redis=j.clients.redis.get("127.0.0.1", 9999)
 
 from Node import Node
 
@@ -22,7 +22,7 @@ class Admin():
         self.sysadminPasswd=""
 
         # DO NOT USE CREDIS IN THIS CONTEXT, NOT THREAD SAFE
-        self.redis = j.clients.redis.getRedisClient("127.0.0.1", 9999)
+        self.redis = j.clients.redis.get("127.0.0.1", 9999)
 
         # self.nodes={}
         if "reset" in self.args.__dict__ and self.args.reset:
