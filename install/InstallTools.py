@@ -2200,7 +2200,6 @@ class Installer():
         paths.cfg=$vardir/cfg
         paths.hrd=$vardir/hrd
 
-        system.logging = 0
         system.sandbox = 1
 
         """
@@ -2253,6 +2252,15 @@ class Installer():
         if not do.exists(path=hpath):
             do.writeFile(hpath,C)
 
+        C = """
+        mode = 'DEV'
+        level = 'DEBUG'
+
+        filter =
+            'j.sal.fs',
+            'j.data.hrd',
+        """
+        do.writeFile("%s/hrd/system/logging.hrd" % vardir, C)
 
 
 

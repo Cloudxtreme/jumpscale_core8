@@ -1,7 +1,6 @@
 
 from JumpScale import j
 import netaddr
-import os
 
 from ActionDecorator import ActionDecorator
 
@@ -49,7 +48,7 @@ class CuisineSSH():
         login="root"
         done=[]
         for item in self.test_login(passwd,port,range,onlyplatform=onlyplatform):
-            keypath=j.sal.fs.joinPaths(os.environ["HOME"],".ssh",keyname+".pub")
+            keypath=j.sal.fs.joinPaths(self.cuisine.bash.environ["HOME"],".ssh",keyname+".pub")
             if j.sal.fs.exists(keypath):
                 key=j.sal.fs.fileGetContents(keypath)
                 executor=j.tools.executor.getSSHBased(item,port,login,passwd,checkok=True)
@@ -159,7 +158,7 @@ class CuisineSSH():
                 ret = True
         else:
             # Make sure that .ssh directory exists, see #42
-            self.cuisine.core.dir_ensure(os.path.dirname(keyf), owner=user, group=group, mode="700")
+            self.cuisine.core.dir_ensure(j.sal.fs.getParentDirName(keyf), owner=user, group=group, mode="700")
             self.cuisine.core.file_write(keyf, key,             owner=user, group=group, mode="600")
             ret = False
 
@@ -207,7 +206,7 @@ class CuisineSSH():
         j.tools.executor.getSSHBased(addr="$(node.tcp.addr)", port=int("$(ssh.port)"), login="$(system.backdoor.login)",
                                      passwd=passwd, debug=False, checkok=True, allow_agent=False, look_for_keys=False)
         # make sure the backdoor is working
-        print("backdoor is working (with passwd)") 
+        print("backdoor is working (with passwd)")
 
         print("make sure some required packages are installed")
         self.cuisine.package.install('openssl')
@@ -219,12 +218,12 @@ class CuisineSSH():
             if pub.strip() == "":
                 raise j.exceptions.RuntimeError("ssh.key.public cannot be empty")
             self.authorize("root", pub)
-        
+
         print("add git repos to known hosts")
         self.cuisine.core.run("ssh-keyscan github.com >> /root/.ssh/known_hosts")
         self.cuisine.core.run("ssh-keyscan git.aydo.com >> /root/.ssh/known_hosts")
 
-        print("enable access done.")            
+        print("enable access done.")
 
     @actionrun(force=True)
     def sshagent_add(self,path,removeFirst=True):

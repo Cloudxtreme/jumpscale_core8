@@ -10,7 +10,7 @@ import os
 
 
 FILE_FORMAT = '%(asctime)s - %(pathname)s:%(lineno)d - %(levelname)-8s - %(message)s'
-CONSOLE_FORMAT = '%(cyan)s[%(asctime)s]%(reset)s - %(pathname)s:%(lineno)-2d - %(log_color)s%(levelname)-8s%(reset)s - %(message)s'
+CONSOLE_FORMAT = '%(cyan)s[%(asctime)s]%(reset)s - %(pathname)30s:%(lineno)-4d - %(log_color)s%(levelname)-8s%(reset)s - %(message)s'
 
 # Modes
 PRODUCTION = 0  # use NullHander, let the application configure the logging
@@ -110,7 +110,7 @@ class LoggerFactory:
         return fh
 
     def __consoleHandler(self):
-        formatter = ColoredFormatter(
+        formatter = LimitFormater(
             fmt=CONSOLE_FORMAT,
             datefmt="%a%d %H:%M",
             reset=True,
@@ -122,7 +122,8 @@ class LoggerFactory:
                 'CRITICAL': 'red,bg_white',
             },
             secondary_log_colors={},
-            style='%'
+            style='%',
+            lenght=37
         )
         ch = logging.StreamHandler()
         ch.setLevel(logging.INFO)
@@ -132,3 +133,20 @@ class LoggerFactory:
     def __redisHandler(self, redis_client=None):
             if redis_client is None:
                 self.redis_client = j.core.db
+
+
+class LimitFormater(ColoredFormatter):
+    def __init__(self, fmt, datefmt, reset, log_colors, secondary_log_colors, style, lenght):
+        super(LimitFormater, self).__init__(
+            fmt=fmt,
+            datefmt=datefmt,
+            reset=reset,
+            log_colors=log_colors,
+            secondary_log_colors=secondary_log_colors,
+            style=style)
+        self.lenght = lenght
+
+    def format(self, record):
+        if len(record.pathname) > self.lenght:
+            record.pathname = "..." + record.pathname[-self.lenght:]
+        return super(LimitFormater, self).format(record)
