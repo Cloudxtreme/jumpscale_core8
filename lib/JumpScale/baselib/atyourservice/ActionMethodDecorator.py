@@ -56,6 +56,9 @@ class ActionMethodDecorator(object):
                 if stateitem.hrd_hash!=hrd_hash or stateitem.actionmethod_hash!=method_hash:
                     stateitem.state="CHANGED"
 
+                if stateitem.name == 'init':
+                    stateitem.state = "CHANGED"
+
                 if stateitem.state=="OK":
                     print ("NOTHING TODO OK: %s"%stateitem)
                     action0.state="OK"

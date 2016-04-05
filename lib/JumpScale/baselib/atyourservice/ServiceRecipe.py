@@ -112,9 +112,8 @@ class ServiceRecipe(ServiceTemplate):
                 [self._checkdef(func[0], getsource(func[1])) for func in getmembers(classes_list[0][1]) if isfunction(func[1])]
                 #self._checkdef(prop[0], getsource(prop[1]), property=True)
                 # props = [prop for prop in getmembers(classes_list[0][1]) if isinstance(prop[1], property)]
-                # TODO add properties
 
-        actionmethodsRequired = ["input", "hrd", "install", "stop", "start", "monitor", "halt", "check_up", "check_down",
+        actionmethodsRequired = ["input", "init", "install", "stop", "start", "monitor", "halt", "check_up", "check_down",
                                  "check_requirements", "cleanup", "data_export", "data_import", "uninstall", "removedata"]
 
         for method in actionmethodsRequired:
@@ -152,7 +151,7 @@ class ServiceRecipe(ServiceTemplate):
                 fullpath = j.sal.fs.joinPaths(ppath, str(self.key))
 
             if j.sal.fs.isDir(fullpath):
-                j.events.opserror_critical(msg='Service with same role ("%s") and of same instance ("%s") is already installed.\nPlease remove dir:%s it could be this is broken install.' % (self.role, instance, fullpath), category="ays.servicetemplate")
+                j.events.opserror_critical(msg='Service with same role ("%s") and of same instance ("%s") is already installed.\nPlease remove dir:%s it could be this is broken install.' % (self.role, instance, fullpath))
 
             service = Service(self, instance=instance, args=args, path=fullpath, parent=parent, originator=originator)
 

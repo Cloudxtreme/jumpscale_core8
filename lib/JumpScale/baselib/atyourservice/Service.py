@@ -168,7 +168,7 @@ class Service:
     @property
     def parent(self):
         if isinstance(self._parent, str):
-            if self.hrd.exists("parent"):
+            if j.sal.fs.exists(j.sal.fs.joinPaths(self.path, "instance.hrd")) and self.hrd.exists("parent"):
                 key = ServiceKey.parse(self.hrd.get("parent"))
                 self._parent = j.atyourservice.getService(name=key.name, role=key.role, instance=key.instance)
             else:
@@ -290,19 +290,7 @@ class Service:
         self.state.save()
 
     def init(self, yaml=None):
-        if self._init is False:
-            self.logger.info('INIT service: %s' % self)
-
-            self._hrd_hash = None
-
-            # make sure yaml is written again, which means changes will be detected
-            if yaml is not None:
-                yamlpath = j.sal.fs.joinPaths(self.path, "model.yaml")
-                if not j.sal.fs.exists(yamlpath):
-                    j.sal.fs.touch(yamlpath)
-                j.data.serializer.yaml.dump(yamlpath, yaml)
-
-            # see if we can find parent if specified (potentially based on role)
+        def _initParent():
             parent = self.recipe.schema.parentSchemaItemGet()
 
             if parent != None:
@@ -331,7 +319,7 @@ class Service:
                         rolearg = aysi.instance
                         self.args[role] = rolearg
                     elif len(ays_s) > 1:
-                        raise j.exceptions.RuntimeError("Cannt find parent with role '%s' for service '%s, there is more than 1"%(role, self))
+                        raise j.exceptions.RuntimeError("Found more than one parent candidate with role '%s' for service '%s" % (role, self))
                     else:
                         if parent.auto:
                             ays_s = [j.atyourservice.new(name=parent.parent, instance='main', version='', domain='', path=None, parent=None, args={}, consume='')]
@@ -343,6 +331,23 @@ class Service:
                 self.path = j.sal.fs.joinPaths(self.parent.path, str(self))
 
             j.sal.fs.createDir(self.path)
+
+
+        if self._init is False:
+            self.logger.info('INIT service: %s' % self)
+
+            self._hrd_hash = None
+
+            # make sure yaml is written again, which means changes will be detected
+            if yaml is not None:
+                yamlpath = j.sal.fs.joinPaths(self.path, "model.yaml")
+                if not j.sal.fs.exists(yamlpath):
+                    j.sal.fs.touch(yamlpath)
+                j.data.serializer.yaml.dump(yamlpath, yaml)
+
+            # see if we can find parent if specified (potentially based on role)
+            if not self.parent:
+                _initParent()
 
             # run the args manipulation action as an action
             self.args = self.actions.input(self.name, self.role, self.instance, self.args)
@@ -373,7 +378,7 @@ class Service:
 
             self._action_methods = None  # to make sure we reload the actions
 
-            self.actions.hrd()
+            self.actions.init()
 
             for item in self.hrd.prefix("recurring"):
                 recurringName = item.split(".")[1]
