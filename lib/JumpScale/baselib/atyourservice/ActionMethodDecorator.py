@@ -4,10 +4,12 @@ import colored_traceback
 colored_traceback.add_hook(always=True)
 import functools
 import sys
+import gevent
 
 class ActionMethodDecorator(object):
 
     def __init__(self,action=True,force=True,actionshow=True,actionMethodName=""):
+        self.logger = j.logger.get('j.atyourservice.actionDecorator')
         self.action=action
         self.force=force
         self.actionshow=actionshow
@@ -16,11 +18,7 @@ class ActionMethodDecorator(object):
     def __call__(self, func):
 
         def wrapper(*args, **kwargs):
-
             cm=self.selfobjCode
-
-            #args[0] is self
-            # cuisine=args[0].cuisine
 
             #this makes sure we show the action on terminal
             if "actionshow" in kwargs:
@@ -38,17 +36,22 @@ class ActionMethodDecorator(object):
             else:
                 force=self.force
 
+            service = eval(self.service)
+            runid = "%s.%s" % (service.key, func.__name__)
+            # j.actions.setRunId(runid)
+
             if action:
                 args=args[1:]
-
+                self.logger.debug("add action for service %s method %s" % (service.key, func.__name__))
+                key = "%s.%s" % (service.key, func.__name__)
                 action0=j.actions.add(action=func, actionRecover=None,args=args,kwargs=kwargs,die=False,stdOutput=True,\
                     errorOutput=True,retry=0,executeNow=False,selfGeneratorCode=cm,force=force,actionshow=actionshow)
 
-                service=action0.selfobj.service
-                stateitem=service.state.getSet(action0.name)
+                service = action0.selfobj.service
+                stateitem = service.state.getSet(action0.name)
 
-                method_hash=service.recipe.actionmethods[action0.name].hash
-                hrd_hash=service.hrdhash
+                method_hash = service.recipe.actionmethods[action0.name].hash
+                hrd_hash = service.hrdhash
 
                 if stateitem.hrd_hash!=hrd_hash or stateitem.actionmethod_hash!=method_hash:
                     stateitem.state="CHANGED"
@@ -65,11 +68,15 @@ class ActionMethodDecorator(object):
                     action0.save()
                     return
 
-                action0.execute()
-                stateitem.state=action0.state
+                while action0.state not in ['OK', "ERROR"]:
+                    print("error action")
+                    gevent.sleep(1)
+
+                # action0.execute()
+                stateitem.state = action0.state
 
                 stateitem.last=j.data.time.epoch
-                
+
                 if action0.state=="OK":
                     stateitem.hrd_hash=hrd_hash
                     stateitem.actionmethod_hash=method_hash

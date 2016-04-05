@@ -32,6 +32,11 @@ class ActionController(object):
         if reset:
             j.core.db.delete("actions.%s"%self.runid)
 
+    def load_action(self, runid, key):
+        if runid.startswith('actions.'):
+            runid = runid[len('actions.'):]
+        return Action(runid=runid, key=key)
+
     @property
     def showonly(self):
         return self._showonly
@@ -47,9 +52,12 @@ class ActionController(object):
 
     @property
     def runid(self):
-        if self._runid=="" or self._runid==None:
+        runid = j.core.db.get('actions.runid')
+        if not runid:
+        # if self._runid=="" or self._runid==None:
             raise j.exceptions.RuntimeError("runid cannot be empty, please set with j.actions.setRunID(...)")
-        return str(self._runid)
+        return str(runid.decode())
+        # return str(self._runid)
 
     def get(self,actionkey):
         return self.actions[actionkey]
@@ -178,17 +186,20 @@ class ActionController(object):
             for action in todo:
                 action.execute()
                 if action.state == "ERROR":
-                    raise j.exceptions.RuntimeError("cannot execute run:%s, failed action." % (runid))
+                    raise j.exceptions.RuntimeError("cannot execute run:%s, failed action." % (action.runid))
             todo = self.gettodo()
-
 
     @property
     def actions(self):
-        if self._actions=={}:
-            for key in j.core.db.hkeys("actions.%s"%self.runid):
-                a=Action(runid=self.runid,key=key)
-                self._actions[a.key]=a
-        return self._actions
+        # if self._actions == {}:
+        if not self._runid:
+            return {}
+
+        for key in j.core.db.hkeys("actions.%s" % self.runid):
+            a = Action(runid=self.runid, key=key)
+            self._actions[a.key] = a
+
+        # return self._actions
 
     # def showAll(self):
     #     self.showonly=True

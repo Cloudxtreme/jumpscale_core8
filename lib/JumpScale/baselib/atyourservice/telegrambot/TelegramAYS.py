@@ -1,4 +1,6 @@
 from JumpScale import j
+from JumpScale.baselib.atyourservice.telegrambot.GeventLoop import AYSExecutor
+
 import telegram
 from telegram import Updater
 from telegram.ext.dispatcher import run_async
@@ -6,8 +8,8 @@ import time
 import re
 import sys
 
-import logging
-logging.basicConfig(level=logging.DEBUG, format='[+][%(levelname)s] %(name)s: %(message)s')
+# import logging
+# logging.basicConfig(level=logging.DEBUG, format='[+][%(levelname)s] %(name)s: %(message)s')
 
 
 class TelegramAYS():
@@ -17,13 +19,14 @@ class TelegramAYS():
     def __init__(self, token, rootpath='/opt/code/telegram-projects/'):
         self.token = token
         self.rootpath = rootpath
+        self.logger = j.logger.get('j.atyourservice.telegrambot')
 
-        print("[+] initializing telegram bot")
+        self.logger.info("initializing telegram bot")
         self.updater = Updater(token=self.token)
         self.bot = self.updater.bot
         dispatcher = self.updater.dispatcher
 
-        print("[+] make sure ssh-agent is running")
+        self.logger.info("make sure ssh-agent is running")
         if not j.sal.process.checkProcessRunning('ssh-agent'):
             j.do.execute('eval `ssh-agent`')
 
@@ -31,7 +34,8 @@ class TelegramAYS():
         dispatcher.addTelegramCommandHandler('start', self.start)
         dispatcher.addTelegramCommandHandler('project', self.project)
         dispatcher.addTelegramCommandHandler('blueprint', self.blueprint)
-        dispatcher.addTelegramCommandHandler('ays', self.ays)
+        dispatcher.addTelegramCommandHandler('init', self.ays_init)
+        dispatcher.addTelegramCommandHandler('monitor', self.ays_monitor)
         dispatcher.addTelegramCommandHandler('help', self.help)
 
         # messages
@@ -40,10 +44,10 @@ class TelegramAYS():
         # internal
         dispatcher.addUnknownTelegramCommandHandler(self.unknown)
 
-        print("[+] projects will be saved to: %s" % rootpath)
+        self.logger.info("projects will be saved to: %s" % rootpath)
         j.sal.fs.createDir(rootpath)
 
-        print("[+] loading existing users")
+        self.logger.info("loading existing users")
         self.users = self.restore()
 
     def restore(self):
@@ -61,7 +65,7 @@ class TelegramAYS():
                 projectName = j.sal.fs.getBaseName(project)
                 users[username]['projects'].append(projectName)
 
-        print('[+] users loaded: %s' % users)
+        self.logger.debug('users loaded: %s' % users)
         return users
 
     #
@@ -94,62 +98,62 @@ class TelegramAYS():
     #
     # helpers
     #
-    def executeProgressive(self, bot, update, command):
-        print("[+] executing: %s" % command)
-        process = j.do.execute(command, showout=False, useShell=False, die=False, async=True)
-
-        prefixs = ['INIT:', 'RUN:', 'NO METHODS FOR:', 'OUT:', 'Exception:']
-
-        rawbuffer = []
-        outbuffer = []
-        lasttime = time.time()
-
-        while True:
-            line = process.stdout.readline()
-            if line == '':
-                break
-
-            sys.stdout.write("[+] ays instance: %s" % line)
-            rawbuffer.append(line)
-
-            for prefix in prefixs:
-                if line.startswith(prefix):
-                    outbuffer.append(line)
-
-            # flush each seconde
-            if time.time() > lasttime + 1:
-                self.bulkSend(bot, update, "\n".join(outbuffer))
-                outbuffer = []
-                lasttime = time.time()
-
-        self.bulkSend(bot, update, "".join(outbuffer))
-        outbuffer = []
-
-        while True:
-            line = process.stderr.readline()
-
-            if line == '':
-                if len(outbuffer) > 0:
-                    bot.sendMessage(chat_id=update.message.chat_id, text="Sorry, I saw these errors during the execution:")
-                    self.bulkSend(bot, update, "".join(outbuffer))
-
-                break
-
-            else:
-                outbuffer.append(line)
-
-        bot.sendMessage(chat_id=update.message.chat_id, text="I'm done.")
+    # def executeProgressive(self, bot, update, command):
+    #     print("[+] executing: %s" % command)
+    #     process = j.do.execute(command, showout=False, useShell=False, die=False, async=True)
+    #
+    #     prefixs = ['INIT:', 'RUN:', 'NO METHODS FOR:', 'OUT:', 'Exception:']
+    #
+    #     rawbuffer = []
+    #     outbuffer = []
+    #     lasttime = time.time()
+    #
+    #     while True:
+    #         line = process.stdout.readline()
+    #         if line == '':
+    #             break
+    #
+    #         sys.stdout.write("[+] ays instance: %s" % line)
+    #         rawbuffer.append(line)
+    #
+    #         for prefix in prefixs:
+    #             if line.startswith(prefix):
+    #                 outbuffer.append(line)
+    #
+    #         # flush each seconde
+    #         if time.time() > lasttime + 1:
+    #             self.bulkSend(bot, update, "\n".join(outbuffer))
+    #             outbuffer = []
+    #             lasttime = time.time()
+    #
+    #     self.bulkSend(bot, update, "".join(outbuffer))
+    #     outbuffer = []
+    #
+    #     while True:
+    #         line = process.stderr.readline()
+    #
+    #         if line == '':
+    #             if len(outbuffer) > 0:
+    #                 bot.sendMessage(chat_id=update.message.chat_id, text="Sorry, I saw these errors during the execution:")
+    #                 self.bulkSend(bot, update, "".join(outbuffer))
+    #
+    #             break
+    #
+    #         else:
+    #             outbuffer.append(line)
+    #
+    #     bot.sendMessage(chat_id=update.message.chat_id, text="I'm done.")
 
     def bulkSend(self, bot, update, message):
         buffer = message
 
         if buffer == "":
-            print("[-] nothing to send")
+            self.logger.debug("nothing to send")
             return
 
         # checking if not too long limit is set to 4096 UTF-8 bytes
         if len(buffer) > 3840:
-            print('[-] buffer too long, chunking...')
+            self.logger.debug('buffer too long, chunking...')
 
             content = message.split("\n")
             buffer = ""
@@ -172,7 +176,7 @@ class TelegramAYS():
     #
     def _initRepo(self, username, project):
         repopath = '%s/%s/%s' % (self.rootpath, username, project)
-        print('[+] initializing repository: %s' % repopath)
+        self.logger.info('initializing repository: %s' % repopath)
 
         j.sal.fs.createDir(repopath)
         j.sal.fs.createDir('%s/blueprints' % repopath)
@@ -194,7 +198,7 @@ class TelegramAYS():
         return True
 
     def _projectsList(self, bot, update):
-        print('[+] listing projects')
+        self.logger.info('listing projects')
         username = update.message.from_user.username
         chatid = update.message.chat_id
 
@@ -219,7 +223,7 @@ class TelegramAYS():
         bot.sendMessage(chat_id=chatid, text="\n".join(projectsList))
 
     def _projectsDelete(self, bot, update, projects):
-        print('[+] deleting projects: %s' % projects)
+        self.logger.info('deleting projects: %s' % projects)
 
         username = update.message.from_user.username
         chatid = update.message.chat_id
@@ -243,7 +247,7 @@ class TelegramAYS():
             bot.sendMessage(chat_id=chatid, text=message, parse_mode="Markdown")
 
     def _projectsCheckout(self, bot, update, project):
-        print('[+] checking out project: %s' % project)
+        self.logger.info('checking out project: %s' % project)
 
         username = update.message.from_user.username
         chatid = update.message.chat_id
@@ -257,6 +261,7 @@ class TelegramAYS():
         # project already exists
         if project in self._getProjects(username):
             self._setCurrentProject(username, project)
+            j.atyourservice.basepath = self._projectPath(username, project)
 
             message = "This project already exists, `%s` is now your current working project." % project
             return bot.sendMessage(chat_id=chatid, text=message, parse_mode="Markdown")
@@ -265,6 +270,7 @@ class TelegramAYS():
         self._initRepo(username, project)
         self._setCurrentProject(username, project)
         self._addProject(username, project)
+        j.atyourservice.basepath = self._projectPath(username, project)
 
         message = "Project `%s` created, it's now your current working project." % project
         bot.sendMessage(chat_id=chatid, text=message, parse_mode="Markdown")
@@ -342,7 +348,7 @@ class TelegramAYS():
 
     def _blueprintGetAll(self, bot, update, project):
         files = j.sal.fs.listFilesInDir(self._blueprintsPath(username, project))
-        print("[+] blueprints: %s" % files)
+        self.logger.info("blueprints: %s" % files)
 
         for file in files:
             name = j.sal.fs.getBaseName(file)
@@ -352,7 +358,7 @@ class TelegramAYS():
         username = update.message.from_user.username
         blueprint = '%s/%s' % (self._blueprintsPath(username, project), name)
 
-        print('[+] grabbing: %s' % blueprint)
+        self.logger.info('grabbing: %s' % blueprint)
 
         if not j.sal.fs.exists(blueprint):
             message = "Sorry, I don't find this blueprint, you can list them with `/blueprint`"
@@ -441,34 +447,66 @@ class TelegramAYS():
         # retreive blueprint
         return self._blueprintGet(bot, update, args[0], self._currentProject(username))
 
-    def _ays_sync(self, bot, update, args):
+    def _execute_check(self, bot, update):
+        self.logger.debug("execute check")
         username = update.message.from_user.username
 
-        print('[+] ays commands for: %s' % username)
         if not self._userCheck(bot, update):
-            return
+            self.logger.debug("not valid user")
+            return False
 
         if not self._currentProject(username):
             message = "Sorry, you are not working on a project currently, use `/project [name]` to create a new one"
-            return bot.sendMessage(chat_id=update.message.chat_id, text=message, parse_mode="Markdown")
+            bot.sendMessage(chat_id=update.message.chat_id, text=message, parse_mode="Markdown")
+            self.logger.debug("not valid project")
+            return False
 
-        repopath = self._currentBlueprintsPath(username)
+        self.logger.debug("valid")
+        return True
 
-        previous = j.sal.fs.getcwd()
-        j.sal.fs.changeDir(repopath)
+    # def _ays_sync(self, bot, update, func, args=None):
+    #     username = update.message.from_user.username
+    #
+    #     print('[+] ays commands for: %s' % username)
+    #     if not self._userCheck(bot, update):
+    #         return
+    #
+    #     if not self._currentProject(username):
+    #         message = "Sorry, you are not working on a project currently, use `/project [name]` to create a new one"
+    #         return bot.sendMessage(chat_id=update.message.chat_id, text=message, parse_mode="Markdown")
+    #
+    #     repopath = self._currentBlueprintsPath(username)
+    #
+    #     previous = j.sal.fs.getcwd()
+    #     j.sal.fs.changeDir(repopath)
+    #
+    #     bot.sendMessage(chat_id=update.message.chat_id, text='Executing command...')
+    #
+    #     # using list for auto-escape
+    #     # ays = 'ays'
+    #     # command = [ays] + args
+    #
+    #     # self.executeProgressive(bot, update, command)
+    #     def do():
+    #         if args:
+    #             func(args)
+    #         else:
+    #             func()
+    #     gl = self.ays_exec.pool.spawn(func)
+    #     gl.join()
+    #
+    #     j.sal.fs.changeDir(previous)
 
-        bot.sendMessage(chat_id=update.message.chat_id, text='Executing command...')
+    def ays_init(self, bot, update, **kwargs):
+        if self._execute_check(bot, update):
+            j.atyourservice.init()
+        # return self._ays_sync(bot, update, kwargs['args'])
 
-        # using list for auto-escape
-        ays = 'ays'
-        command = [ays] + args
-
-        self.executeProgressive(bot, update, command)
-        j.sal.fs.changeDir(previous)
-
-    @run_async
-    def ays(self, bot, update, **kwargs):
-        return self._ays_sync(bot, update, kwargs['args'])
+    def ays_monitor(self, bot, update, **kwargs):
+        if self._execute_check(bot, update):
+            for s in j.atyourservice.findServices():
+                print("monitor for service %s" % s.key)
+                s.actions.monitor()
 
     @run_async
     def message(self, bot, update, **kwargs):
@@ -507,7 +545,8 @@ class TelegramAYS():
             message = "This look like a blueprint, I saved it to: %s. Let me initialize it." % custom
             bot.sendMessage(chat_id=update.message.chat_id, text=message)
 
-            return self._ays_sync(bot, update, ["init"])
+            return self.ays_init(bot, update)
+            # return self._ays_sync(bot, update, ["init"])
 
         except e:
             print(e)
@@ -598,5 +637,8 @@ class TelegramAYS():
     # management
     #
     def run(self):
+        self.ays_exec = AYSExecutor()
+        self.ays_exec.start()
+
         self.updater.start_polling()
         print("[+] bot is listening")

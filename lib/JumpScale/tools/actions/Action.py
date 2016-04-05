@@ -75,6 +75,7 @@ class Action:
         self.retry=retry
         self.die=die
         self.force=force
+        self.serviceObj = serviceObj
 
         self.traceback=""
 
@@ -87,7 +88,6 @@ class Action:
             self.args = args
             self.kwargs= kwargs
 
-            self.serviceObj = serviceObj
 
             self.method=action
 
@@ -244,8 +244,8 @@ class Action:
                 self._result = None
 
         else:
-            if self._key!="":
-                raise j.exceptions.RuntimeError("could not load action:%s, was not in redis & key specified"%self._name)
+            if self._key != "":
+                raise j.exceptions.NotFound("could not load action:%s, was not in redis & key specified" % self._name)
 
     @property
     def actionRecover(self):
@@ -363,7 +363,8 @@ class Action:
     def key(self):
         if self._key=="":
             extra=""
-            key = "%s.%s.%s" % (self.filename,self.name,self._args1line)
+            key = "%s.%s.%s" % (self.path,self.name,self._args1line)
+            # key = "%s.%s.%s" % (self.filename, self.name, self._args1line)
             return key
         else:
             return self._key

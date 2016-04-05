@@ -215,7 +215,7 @@ class Service:
     @property
     def actions(self):
         if self._action_methods is None:
-            print ("reload mgmt actions for %s"%(self))
+            self.logger.debug("reload mgmt actions for %s" % self)
             action_methods = self._loadActions(self.recipe.path_actions,"mgmt")
             self._action_methods = action_methods
         return self._action_methods

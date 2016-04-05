@@ -62,7 +62,7 @@ class AtYourServiceFactory():
     @property
     def basepath(self):
         if self._basepath==None:
-            self.basepath=j.sal.fs.getcwd()
+            self.basepath = j.sal.fs.getcwd()
         return self._basepath
 
     @basepath.setter
@@ -636,3 +636,8 @@ class AtYourServiceFactory():
         if start:
             bot.run()
         return bot
+
+    def start(self):
+        from JumpScale.baselib.atyourservice.telegrambot.GeventLoop import AYSExecutor
+        self.ays_exec = AYSExecutor(size=1)
+        self.ays_exec.start()

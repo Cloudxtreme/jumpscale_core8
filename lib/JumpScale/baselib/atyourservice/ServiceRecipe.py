@@ -98,6 +98,7 @@ class ServiceRecipe(ServiceTemplate):
         class actionmethod(ActionMethodDecorator):
             def __init__(self,*args,**kwargs):
                 ActionMethodDecorator.__init__(self,*args,**kwargs)
+                self.service = "j.atyourservice.getService(name='$(service.name)', role='$(service.role)', instance='$(service.instance)', die=True)"
                 self.selfobjCode="service=j.atyourservice.getService(name='$(service.name)', role='$(service.role)', instance='$(service.instance)', die=True);selfobj=service.actions;selfobj.service=service"
         class Actions():
         """
