@@ -1,7 +1,7 @@
 from JumpScale import j
 from ServiceTemplate import ServiceTemplate
 from Service import Service, loadmodule
-from ServiceKey import ServiceKey
+from inspect import getmembers, isfunction, isclass, getsource
 
 class ActionMethod():
 
@@ -94,18 +94,22 @@ class ServiceRecipe(ServiceTemplate):
     def _copyActions(self):
         self._out = """
         from JumpScale import j
+
         ActionMethodDecorator=j.atyourservice.getActionMethodDecorator()
+
+
         class actionmethod(ActionMethodDecorator):
             def __init__(self,*args,**kwargs):
                 ActionMethodDecorator.__init__(self,*args,**kwargs)
                 self.service = "j.atyourservice.getService(name='$(service.name)', role='$(service.role)', instance='$(service.instance)', die=True)"
                 self.selfobjCode="service=j.atyourservice.getService(name='$(service.name)', role='$(service.role)', instance='$(service.instance)', die=True);selfobj=service.actions;selfobj.service=service"
+
+
         class Actions():
         """
         self._out = j.data.text.strip(self._out)
 
         if j.sal.fs.exists(self.template.path_actions):
-            from inspect import getmembers, isfunction, isclass, getsource
             actions = loadmodule('temp.actions', self.template.path_actions)
             classes_list = [cls for cls in getmembers(actions) if isclass(cls[1])]
             if classes_list:

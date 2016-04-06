@@ -273,7 +273,7 @@ class Service:
                     service = j.atyourservice.getService(name=key.name, instance=key.instance)
                     producerSet.add(service)
 
-                self._producers[key] = list(producerSet)
+                self._producers[key.role] = list(producerSet)
 
             if self.parent is not None:
                 self._producers[self.parent.role] = [self.parent]
@@ -617,7 +617,7 @@ class Service:
 
     def getProducers(self, producercategory):
         if producercategory not in self.producers:
-            j.events.inputerror_warning("cannot find producer with category:%s"%producercategory, "ays.getProducer")
+            j.events.inputerror_warning("cannot find producer with category:%s" % producercategory, "ays.getProducer")
         instances = self.producers[producercategory]
         return instances
 

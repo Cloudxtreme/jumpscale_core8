@@ -63,7 +63,7 @@ class ActionMethodDecorator(object):
                     print ("NOTHING TODO OK: %s"%stateitem)
                     action0.state="OK"
                     action0.save()
-                    return
+                    return action0.result
 
                 if stateitem.state=="DISABLED":
                     print ("NOTHING TODO DISABLED: %s"%stateitem)
