@@ -47,7 +47,6 @@ class CockpitDeployerBot:
         self._register_handlers()
         if 'git' in self.config:
             cuisine = j.tools.cuisine.local
-            import ipdb; ipdb.set_trace()
             rc, resp = cuisine.core.run('git config --global user.name', die=False)
             if resp == '':
                 cuisine.core.run('git config --global user.name %s' % self.config['git']['username'])
@@ -95,20 +94,22 @@ class CockpitDeployerBot:
         Add a telegram handler to the logger of the deployer objects
         To forward the output of the deployement execution to telegram
         """
-        q = queue.Queue()
-        qh = logging.handlers.QueueHandler(q)
-        qh.setLevel(logging.INFO)
-        deployer.logger.addHandler(qh)
-
+        # q = queue.Queue()
+        # qh = logging.handlers.QueueHandler(q)
+        # qh.setLevel(logging.INFO)
         th = TelegramHandler(self.bot, chat_id)
-        ql = logging.handlers.QueueListener(q, th)
-        ql.start()
-        return ql
+        deployer.logger = j.logger.get('cockpit.installer.%s' % chat_id)
+        deployer.logger.addHandler(th)
+
+        # ql = logging.handlers.QueueListener(q, th)
+        # ql.start()
+        # return ql
 
     @run_async
     def start(self, bot, update, **kwargs):
         chat_id = update.message.chat_id
         username = update.message.from_user.username
+        print('chatid %s - username %s' % (chat_id, username))
 
         if username in self.deployers:
             deployer = self.deployers[username]
@@ -133,9 +134,10 @@ Let's get to work.""" % update.message.from_user.first_name
             deployer.deploy()
         except Exception as e:
             self.logger.error(e)
-            self.bot.sendMessage(chat_id=chat_id, text="Error during deployement. Please /stat again.")
+            self.bot.sendMessage(chat_id=chat_id, text="Error during deployement. Please /start again.")
         finally:
-            ql.stop()
+            pass
+            # ql.stop()
 
     def unknown(self, bot, update):
         bot.sendMessage(chat_id=update.message.chat_id, text="Sorry, I didn't understand that command.")

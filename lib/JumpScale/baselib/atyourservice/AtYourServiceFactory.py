@@ -637,7 +637,9 @@ class AtYourServiceFactory():
             bot.run()
         return bot
 
-    def start(self):
-        from JumpScale.baselib.atyourservice.telegrambot.GeventLoop import AYSExecutor
+    def start(self, ays_repo):
+        from JumpScale.baselib.atyourservice.GeventLoop import AYSExecutor
+        self.basepath = ays_repo
+        j.sal.fs.changeDir(ays_repo)
         self.ays_exec = AYSExecutor(size=1)
-        self.ays_exec.start()
+        self.ays_exec.start(wait=True)

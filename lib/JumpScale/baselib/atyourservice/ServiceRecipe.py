@@ -80,14 +80,17 @@ class ServiceRecipe(ServiceTemplate):
         if not property:
             a = ActionMethod(self, actionmethod, content)
             self.actionmethods[actionmethod] = a
+            async = ''
+            if actionmethod != 'init':
+                async = 'async=True'
             if actionmethod == 'input':
                 self._out += '\n    def input(self,name,role,instance,serviceargs):\n        return serviceargs\n\n'
             elif actionmethod == 'getExecutor':
                 self._out += content
             elif content:
-                self._out += '\n    @actionmethod()\n%s' % (content)
+                self._out += '\n    @actionmethod(%s)\n%s' % (async, content)
             else:
-                self._out += "\n    @actionmethod()\n    def %s(self):\n        return True\n\n" % actionmethod
+                self._out += "\n    @actionmethod(%s)\n    def %s(self):\n        return True\n\n" % (async, actionmethod)
         else:
             self._out += content
 
@@ -101,7 +104,6 @@ class ServiceRecipe(ServiceTemplate):
         class actionmethod(ActionMethodDecorator):
             def __init__(self,*args,**kwargs):
                 ActionMethodDecorator.__init__(self,*args,**kwargs)
-                self.service = "j.atyourservice.getService(name='$(service.name)', role='$(service.role)', instance='$(service.instance)', die=True)"
                 self.selfobjCode="service=j.atyourservice.getService(name='$(service.name)', role='$(service.role)', instance='$(service.instance)', die=True);selfobj=service.actions;selfobj.service=service"
 
 

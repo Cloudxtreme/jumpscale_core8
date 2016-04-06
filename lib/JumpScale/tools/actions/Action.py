@@ -16,7 +16,7 @@ from pygments.formatters import get_formatter_by_name
 
 class Action:
     def __init__(self, action=None,runid=0,actionRecover=None,args=(),kwargs={},die=True,stdOutput=True,errorOutput=True,retry=1,\
-                serviceObj=None,deps=[],key="",selfGeneratorCode="",force=False,actionshow=True):
+                serviceObj=None,deps=[],key="",selfGeneratorCode="",force=False,actionshow=True, async=False):
         '''
         self.doc is in doc string of method
         specify recover actions in the description
@@ -40,7 +40,6 @@ class Action:
 
         if key=="" and action==None:
             raise j.exceptions.RuntimeError("need to specify key or action")
-
 
         self._args=""
         self._kwargs=""
@@ -75,7 +74,7 @@ class Action:
         self.retry=retry
         self.die=die
         self.force=force
-        self.serviceObj = serviceObj
+        self.async = async
 
         self.traceback=""
 
@@ -88,6 +87,7 @@ class Action:
             self.args = args
             self.kwargs= kwargs
 
+            self.serviceObj = serviceObj
 
             self.method=action
 
@@ -121,7 +121,6 @@ class Action:
             self._load()
         else:
             self._load(True)
-
 
         self._parents=[]
         if len(j.actions.stack)>0:
@@ -216,6 +215,7 @@ class Action:
         model["die"] = self.die
         model["calling_path"] = self.calling_path
         model["calling_linenr"] = self.calling_linenr
+        model["async"] = self.async
 
         return model
 
@@ -233,7 +233,7 @@ class Action:
             if all:
                 data3=data2
             else:
-                toload=["_state","_lastArgsMD5","_lastCodeMD5","_result","traceback","stdouterr"]
+                toload=["_state","_lastArgsMD5","_lastCodeMD5","_result","traceback","stdouterr", "async"]
                 data3={}
                 for item in toload:
                     data3[item]=data2[item]
@@ -349,7 +349,7 @@ class Action:
     @property
     def readyForExecute(self):
         self.check()
-        if self.state!="OK" and self.depsAreOK:
+        if self.state !="OK" and self.state != 'ERROR' and self.depsAreOK:
             return True
         return False
 

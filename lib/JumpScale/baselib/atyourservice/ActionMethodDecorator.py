@@ -8,12 +8,13 @@ import gevent
 
 class ActionMethodDecorator(object):
 
-    def __init__(self,action=True,force=True,actionshow=True,actionMethodName=""):
+    def __init__(self,action=True,force=True,actionshow=True,actionMethodName="", async=False):
         self.logger = j.logger.get('j.atyourservice.actionDecorator')
         self.action=action
         self.force=force
         self.actionshow=actionshow
         self.name=actionMethodName
+        self.async = async
 
     def __call__(self, func):
 
@@ -36,16 +37,10 @@ class ActionMethodDecorator(object):
             else:
                 force=self.force
 
-            service = eval(self.service)
-            runid = "%s.%s" % (service.key, func.__name__)
-            # j.actions.setRunId(runid)
-
             if action:
                 args=args[1:]
-                self.logger.debug("add action for service %s method %s" % (service.key, func.__name__))
-                key = "%s.%s" % (service.key, func.__name__)
                 action0=j.actions.add(action=func, actionRecover=None,args=args,kwargs=kwargs,die=False,stdOutput=True,\
-                    errorOutput=True,retry=0,executeNow=False,selfGeneratorCode=cm,force=force,actionshow=actionshow)
+                    errorOutput=True,retry=0,executeNow=False,selfGeneratorCode=cm,force=force,actionshow=actionshow, async=self.async)
 
                 service = action0.selfobj.service
                 stateitem = service.state.getSet(action0.name)
@@ -55,9 +50,6 @@ class ActionMethodDecorator(object):
 
                 if stateitem.hrd_hash!=hrd_hash or stateitem.actionmethod_hash!=method_hash:
                     stateitem.state="CHANGED"
-
-                if stateitem.name == 'init':
-                    stateitem.state = "CHANGED"
 
                 if stateitem.state=="OK":
                     print ("NOTHING TODO OK: %s"%stateitem)
@@ -71,31 +63,28 @@ class ActionMethodDecorator(object):
                     action0.save()
                     return
 
-                while action0.state not in ['OK', "ERROR"]:
-                    print("error action")
-                    gevent.sleep(1)
+                if not self.async:
+                    action0.execute()
+                    stateitem.state = action0.state
 
-                # action0.execute()
-                stateitem.state = action0.state
+                    stateitem.last=j.data.time.epoch
 
-                stateitem.last=j.data.time.epoch
+                    if action0.state=="OK":
+                        stateitem.hrd_hash=hrd_hash
+                        stateitem.actionmethod_hash=method_hash
+                    else:
+                        if "die" in kwargs:
+                            if kwargs["die"]==False:
+                                return action0
+                        msg="**ERROR ACTION**:\n%s"%action0
+                        # raise j.exceptions.RuntimeError()
+                        print (msg)
+                        service.save()
+                        sys.exit(1)
 
-                if action0.state=="OK":
-                    stateitem.hrd_hash=hrd_hash
-                    stateitem.actionmethod_hash=method_hash
-                else:
-                    if "die" in kwargs:
-                        if kwargs["die"]==False:
-                            return action0
-                    msg="**ERROR ACTION**:\n%s"%action0
-                    # raise j.exceptions.RuntimeError()
-                    print (msg)
                     service.save()
-                    sys.exit(1)
 
-                service.save()
-
-                return action0.result
+                    return action0.result
             else:
                 return func(*args,**kwargs)
 

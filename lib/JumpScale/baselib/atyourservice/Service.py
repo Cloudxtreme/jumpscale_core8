@@ -266,14 +266,14 @@ class Service:
     def producers(self):
         if self._producers is None or self._producers == {}:
             self._producers={}
-            for key, items in self.hrd.getDictFromPrefix("producer").items():
+            for role, items in self.hrd.getDictFromPrefix("producer").items():
                 producerSet = set()
                 for item in items:
                     key = ServiceKey.parse(item)
                     service = j.atyourservice.getService(name=key.name, instance=key.instance)
                     producerSet.add(service)
 
-                self._producers[key.role] = list(producerSet)
+                self._producers[role] = list(producerSet)
 
             if self.parent is not None:
                 self._producers[self.parent.role] = [self.parent]
@@ -616,8 +616,9 @@ class Service:
         return False
 
     def getProducers(self, producercategory):
+        import ipdb; ipdb.set_trace()
         if producercategory not in self.producers:
-            j.events.inputerror_warning("cannot find producer with category:%s" % producercategory, "ays.getProducer")
+            raise j.exceptions.Input("cannot find producer with category:%s"%producercategory, "ays.getProducer")
         instances = self.producers[producercategory]
         return instances
 

@@ -87,7 +87,7 @@ class ActionController(object):
     def selectAction(self):
         return j.tools.console.askChoice(j.actions.actions)
 
-    def add(self, action,actionRecover=None,args=(),kwargs={},die=True,stdOutput=False,errorOutput=True,retry=0,serviceObj=None,deps=None,executeNow=True,selfGeneratorCode="",force=True,showout=None,actionshow=True):
+    def add(self, action,actionRecover=None,args=(),kwargs={},die=True,stdOutput=False,errorOutput=True,retry=0,serviceObj=None,deps=None,executeNow=True,selfGeneratorCode="",force=True,showout=None,actionshow=True, async=False):
         '''
         self.doc is in doc string of method
         specify recover actions in the description
@@ -123,7 +123,7 @@ class ActionController(object):
             raise j.exceptions.RuntimeError("cannot create action: args should be a list, kwargs a dict, input error")
 
         action=Action(action,runid=self.runid,actionRecover=actionRecover,args=args,kwargs=kwargs,die=die,stdOutput=stdOutput,errorOutput=errorOutput,\
-            retry=retry,serviceObj=serviceObj,deps=deps,selfGeneratorCode=selfGeneratorCode,force=force,actionshow=actionshow)
+            retry=retry,serviceObj=serviceObj,deps=deps,selfGeneratorCode=selfGeneratorCode,force=force,actionshow=actionshow, async=async)
 
         action.calling_linenr=linenr
         action.calling_path=fpath
@@ -191,15 +191,11 @@ class ActionController(object):
 
     @property
     def actions(self):
-        # if self._actions == {}:
-        if not self._runid:
-            return {}
-
-        for key in j.core.db.hkeys("actions.%s" % self.runid):
-            a = Action(runid=self.runid, key=key)
-            self._actions[a.key] = a
-
-        # return self._actions
+        if self._actions == {}:
+            for key in j.core.db.hkeys("actions.%s" % self.runid):
+                a = Action(runid=self.runid, key=key)
+                self._actions[a.key] = a
+        return self._actions
 
     # def showAll(self):
     #     self.showonly=True

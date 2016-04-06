@@ -1,5 +1,4 @@
 from JumpScale import j
-from JumpScale.baselib.atyourservice.telegrambot.GeventLoop import AYSExecutor
 
 import telegram
 from telegram import Updater
@@ -36,6 +35,7 @@ class TelegramAYS():
         dispatcher.addTelegramCommandHandler('blueprint', self.blueprint)
         dispatcher.addTelegramCommandHandler('init', self.ays_init)
         dispatcher.addTelegramCommandHandler('monitor', self.ays_monitor)
+        dispatcher.addTelegramCommandHandler('install', self.ays_install)
         dispatcher.addTelegramCommandHandler('help', self.help)
 
         # messages
@@ -258,10 +258,17 @@ class TelegramAYS():
             message = "Sorry, I don't support this project name, please name it without any special characters or spaces."
             return bot.sendMessage(chat_id=chatid, text=message)
 
+        project_path = self._projectPath(username, project)
+        def start_ays(project_path):
+            j.atyourservice.basepath = project_path
+            c = j.tools.cuisine.local
+            cmd = "js 'j.atyourservice.start(\"%s\")'" % project_path
+            c.tmux.executeInScreen("atyourservice", project_path, cmd)
+
         # project already exists
         if project in self._getProjects(username):
             self._setCurrentProject(username, project)
-            j.atyourservice.basepath = self._projectPath(username, project)
+            start_ays(project_path)
 
             message = "This project already exists, `%s` is now your current working project." % project
             return bot.sendMessage(chat_id=chatid, text=message, parse_mode="Markdown")
@@ -270,7 +277,7 @@ class TelegramAYS():
         self._initRepo(username, project)
         self._setCurrentProject(username, project)
         self._addProject(username, project)
-        j.atyourservice.basepath = self._projectPath(username, project)
+        start_ays(project_path)
 
         message = "Project `%s` created, it's now your current working project." % project
         bot.sendMessage(chat_id=chatid, text=message, parse_mode="Markdown")
@@ -502,6 +509,10 @@ class TelegramAYS():
             j.atyourservice.init()
         # return self._ays_sync(bot, update, kwargs['args'])
 
+    def ays_install(self, bot, update, **kwargs):
+        if self._execute_check(bot, update):
+            j.atyourservice.install()
+
     def ays_monitor(self, bot, update, **kwargs):
         if self._execute_check(bot, update):
             for s in j.atyourservice.findServices():
@@ -637,8 +648,5 @@ class TelegramAYS():
     # management
     #
     def run(self):
-        self.ays_exec = AYSExecutor()
-        self.ays_exec.start()
-
         self.updater.start_polling()
         print("[+] bot is listening")
