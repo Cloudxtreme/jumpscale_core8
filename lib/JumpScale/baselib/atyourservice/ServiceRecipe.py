@@ -76,52 +76,46 @@ class ServiceRecipe(ServiceTemplate):
 
         self._copyActions()
 
-    def _checkdef(self, actionmethod, content, property=False):
-        if not property:
-            a = ActionMethod(self, actionmethod, content)
-            self.actionmethods[actionmethod] = a
-            async = ''
-            if actionmethod != 'init':
-                async = 'async=True'
-            if actionmethod == 'input':
-                self._out += '\n    def input(self,name,role,instance,serviceargs):\n        return serviceargs\n\n'
-            elif actionmethod == 'getExecutor':
-                self._out += content
-            elif content:
-                self._out += '\n    @actionmethod(%s)\n%s' % (async, content)
-            else:
-                self._out += "\n    @actionmethod(%s)\n    def %s(self):\n        return True\n\n" % (async, actionmethod)
-        else:
+    def _checkdef(self, actionmethod, content, decorator=True):
+        a = ActionMethod(self, actionmethod, content)
+        self.actionmethods[actionmethod] = a
+        async = ''
+        if actionmethod != 'init':
+            async = 'async=True'
+        if actionmethod == 'input':
+            self._out += '\n    def input(self,name,role,instance,serviceargs):\n        return serviceargs\n\n'
+        elif not decorator and content:
             self._out += content
+        elif content:
+            self._out += '\n    @actionmethod(%s)\n%s' % (async, content)
+        else:
+            self._out += "\n    @actionmethod(%s)\n    def %s(self):\n        return True\n\n" % (async, actionmethod)
 
     def _copyActions(self):
         self._out = """
         from JumpScale import j
-
         ActionMethodDecorator=j.atyourservice.getActionMethodDecorator()
-
-
         class actionmethod(ActionMethodDecorator):
             def __init__(self,*args,**kwargs):
                 ActionMethodDecorator.__init__(self,*args,**kwargs)
                 self.selfobjCode="service=j.atyourservice.getService(name='$(service.name)', role='$(service.role)', instance='$(service.instance)', die=True);selfobj=service.actions;selfobj.service=service"
-
-
         class Actions():
         """
+        actionmethodsRequired = ["input", "init", "install", "stop", "start", "monitor", "halt", "check_up", "check_down",
+                                 "check_requirements", "cleanup", "data_export", "data_import", "uninstall", "removedata"]
         self._out = j.data.text.strip(self._out)
 
         if j.sal.fs.exists(self.template.path_actions):
             actions = loadmodule('temp.actions', self.template.path_actions)
             classes_list = [cls for cls in getmembers(actions) if isclass(cls[1])]
             if classes_list:
-                [self._checkdef(func[0], getsource(func[1])) for func in getmembers(classes_list[0][1]) if isfunction(func[1])]
+                for func in getmembers(classes_list[0][1]):
+                    if isfunction(func[1]):
+                        decorator = True if func[0] in actionmethodsRequired else False
+                        self._checkdef(func[0], getsource(func[1]), decorator)
+                # [self._checkdef(func[0], getsource(func[1])) for func in getmembers(classes_list[0][1]) if isfunction(func[1])]
                 #self._checkdef(prop[0], getsource(prop[1]), property=True)
                 # props = [prop for prop in getmembers(classes_list[0][1]) if isinstance(prop[1], property)]
-
-        actionmethodsRequired = ["input", "init", "install", "stop", "start", "monitor", "halt", "check_up", "check_down",
-                                 "check_requirements", "cleanup", "data_export", "data_import", "uninstall", "removedata"]
-
         for method in actionmethodsRequired:
             if method not in self.actionmethods:
                 self._checkdef(method, "")  # remember action

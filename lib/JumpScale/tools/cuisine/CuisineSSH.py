@@ -158,7 +158,7 @@ class CuisineSSH():
                 ret = True
         else:
             # Make sure that .ssh directory exists, see #42
-            self.cuisine.core.dir_ensure(j.sal.fs.getParentDirName(keyf), owner=user, group=group, mode="700")
+            self.cuisine.core.dir_ensure(j.sal.fs.getDirName(keyf), owner=user, group=group, mode="700")
             self.cuisine.core.file_write(keyf, key,             owner=user, group=group, mode="600")
             ret = False
 

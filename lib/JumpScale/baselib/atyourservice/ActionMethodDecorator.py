@@ -63,6 +63,10 @@ class ActionMethodDecorator(object):
                     action0.save()
                     return
 
+                print('service save')
+                service.save()
+                service.state.reload()
+
                 if not self.async:
                     action0.execute()
                     stateitem.state = action0.state

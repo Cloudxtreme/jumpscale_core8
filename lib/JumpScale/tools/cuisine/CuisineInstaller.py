@@ -18,6 +18,12 @@ class CuisineInstaller(object):
         self.executor=executor
         self.cuisine=cuisine
 
+    @actionrun(action=True)
+    def jumpscale_installed(self, die=False):
+        rc, out = self.cuisine.core.run('which js', die=False)
+        if rc == 0 and out:
+            return True
+        return False
 
     @actionrun(action=True)
     def clean(self):
@@ -56,6 +62,8 @@ class CuisineInstaller(object):
         @param reset, remove old code (only used when rw mode)
 
         """
+        if self.jumpscale_installed() and not reset:
+            return
         self.clean()
         self.base()
 

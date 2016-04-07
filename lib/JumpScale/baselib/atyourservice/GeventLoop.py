@@ -41,14 +41,17 @@ class AYSExecutor:
                 # self.logger.debug('get actions for runid: %s' % runid)
 
                 hash_key = "actions.%s" % runid
-                # self.logger.debug("get action for %s" % hash_key)
+                self.logger.debug("get action for %s" % hash_key)
 
                 for key in j.core.db.hkeys(hash_key):
                     action = j.actions.load_action(runid=runid, key=key)
-                # for action in j.actions.actions.values():
+                    service = action.selfobj.service
+                    self.logger.debug("service %s action method: %s ready:%s - aysnc:%s " % (service.key, action.name, action.readyForExecute, action.async))
                     if action.readyForExecute and action.async:
-                        if len(action.selfobj.service.getProducersWaiting(action, set())) > 0:
-                            continue
+                        # depsWaiting = action.selfobj.service.getProducersWaiting(action, set())
+                        # if len(depsWaiting) > 0:
+                        #     self.logger.debug("deps waiting %s" % depsWaiting)
+                        #     continue
                         self.logger.debug('schedule action %s %s' % (runid, action.key))
                         self.consumer_pool.spawn(self._worker, action)
 
@@ -67,10 +70,13 @@ class AYSExecutor:
         stateitem = service.state.getSet(action.name)
         stateitem.state = action.state
         stateitem.last = j.data.time.epoch
+        service.save()
 
         if action.state == "OK":
             stateitem.hrd_hash = hrd_hash
             stateitem.actionmethod_hash = method_hash
+            # remove action from redis once done and OK
+            j.core.db.hdel(action.runid, action.key)
         else:
             # TODO handler async error
             # # raise j.exceptions.RuntimeError()

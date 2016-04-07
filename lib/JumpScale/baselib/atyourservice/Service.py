@@ -298,6 +298,8 @@ class Service:
                 name = parent.parent
                 role = name
 
+                ays_s = []
+
                 if '.' in name:
                     role = name.split('.', 1)[0]
 
@@ -313,20 +315,20 @@ class Service:
                     else:
                         ays_s = j.atyourservice.findServices(role=role)
 
-                    if len(ays_s) == 1:
-                        # we found 1 service of required role, will take that one
-                        aysi = ays_s[0]
-                        rolearg = aysi.instance
-                        self.args[role] = rolearg
-                    elif len(ays_s) > 1:
-                        raise j.exceptions.RuntimeError("Found more than one parent candidate with role '%s' for service '%s" % (role, self))
+                if len(ays_s) == 1:
+                    # we found 1 service of required role, will take that one
+                    aysi = ays_s[0]
+                    rolearg = aysi.instance
+                    self.args[role] = rolearg
+                elif len(ays_s) > 1:
+                    raise j.exceptions.RuntimeError("Found more than one parent candidate with role '%s' for service '%s" % (role, self))
+                else:
+                    if parent.auto:
+                        ays_s = [j.atyourservice.new(name=parent.parent, instance='main', version='', domain='', path=None, parent=None, args={}, consume='')]
+                        rolearg = "main"
                     else:
-                        if parent.auto:
-                            ays_s = [j.atyourservice.new(name=parent.parent, instance='main', version='', domain='', path=None, parent=None, args={}, consume='')]
-                            rolearg = "main"
-                        else:
-                            raise j.exceptions.RuntimeError("Cannot find parent with role '%s' for service '%s, there is none, please make sure the service exists."%(role, self))
-
+                        raise j.exceptions.RuntimeError("Cannot find parent with role '%s' for service '%s, there is none, please make sure the service exists."%(role, self))
+       
                 self._parent = ays_s[0]
                 self.path = j.sal.fs.joinPaths(self.parent.path, str(self))
 
@@ -419,6 +421,9 @@ class Service:
                 name = consumeitem.consume_link
                 role = name.split('.')[0]
                 consumename = consumeitem.name
+
+                if role in self.producers:
+                    continue
 
                 instancenames = []
                 if consumename in self.args:
@@ -589,9 +594,11 @@ class Service:
 
     def _getExecutor(self):
         executor = None
-        for parent in self.parents:
-            if hasattr(parent.actions, 'getExecutor'):
-                executor = parent.actions.getExecutor()
+        tocheck = [self]
+        tocheck.extend(self.parents)
+        for service in tocheck:
+            if hasattr(service.actions, 'getExecutor'):
+                executor = service.actions.getExecutor()
                 return executor
         return j.tools.executor.getLocal()
 

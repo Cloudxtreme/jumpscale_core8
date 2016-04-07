@@ -455,6 +455,7 @@ class TelegramAYS():
         return self._blueprintGet(bot, update, args[0], self._currentProject(username))
 
     def _execute_check(self, bot, update):
+        # TODO: make this a decorator
         self.logger.debug("execute check")
         username = update.message.from_user.username
 
@@ -507,7 +508,6 @@ class TelegramAYS():
     def ays_init(self, bot, update, **kwargs):
         if self._execute_check(bot, update):
             j.atyourservice.init()
-        # return self._ays_sync(bot, update, kwargs['args'])
 
     def ays_install(self, bot, update, **kwargs):
         if self._execute_check(bot, update):
@@ -559,7 +559,7 @@ class TelegramAYS():
             return self.ays_init(bot, update)
             # return self._ays_sync(bot, update, ["init"])
 
-        except e:
+        except Exception as e:
             print(e)
             print("[-] not a blueprint message")
             pass

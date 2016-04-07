@@ -14,7 +14,7 @@ except:
     pass
 import os
 
-
+import time
 import colored_traceback
 colored_traceback.add_hook(always=True)
 
@@ -240,13 +240,14 @@ class AtYourServiceFactory():
 
     def _doinit(self):
         # if we don't have write permissin on /opt don't try do download service templates
+        j.actions.setRunId("ays_%s"%j.sal.fs.getBaseName(j.atyourservice.basepath))
+
         opt = j.tools.path.get('/opt')
         if not opt.access(os.W_OK):
             self._init = True
 
         if self._init is False:
 
-            j.actions.setRunId("ays_%s"%j.sal.fs.getBaseName(j.atyourservice.basepath))
             if j.sal.fs.exists(path="/etc/my_init.d"):
                 self.indocker=True
 
@@ -440,11 +441,14 @@ class AtYourServiceFactory():
             for i in range(len(todo)):
                 service = todo[i]
                 service.runAction(action, printonly=printonly)
+            time.sleep(1)
             todo = self.findTodo(action=action)
 
     def findTodo(self, action="install"):
         todo = list()
+
         for key, service in self.services.items():
+            service.state.reload()
             actionstate = service.state.getSet(action)
             if actionstate.state != "OK":
                 producersWaiting = service.getProducersWaiting(action, set())
@@ -637,9 +641,9 @@ class AtYourServiceFactory():
             bot.run()
         return bot
 
-    def start(self, ays_repo):
+    def start(self, ays_repo=None):
         from JumpScale.baselib.atyourservice.GeventLoop import AYSExecutor
-        self.basepath = ays_repo
-        j.sal.fs.changeDir(ays_repo)
+        if ays_repo:
+            self.basepath = ays_repo
         self.ays_exec = AYSExecutor(size=1)
         self.ays_exec.start(wait=True)

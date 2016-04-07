@@ -115,6 +115,9 @@ class ServiceState():
         self.items={}
         self._read()
 
+    def reload(self):
+        self._read()
+
     def getSet(self,methodname,state="INIT"):
         if not methodname in self.items:
             self.items[methodname]=StateItem(self,methodname,state=state)
