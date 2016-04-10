@@ -547,6 +547,7 @@ class Service:
         for producer in self.getProducersRecursive(set(), set()):
             actionrunobj = producer.state.getSet(action)
             if actionrunobj.state != "OK":
+                self.logger.debug("getProducersWaiting: service:%s producer:%s state:%s" %(self.key, producer.key, actionrunobj.state))
                 producersChanged.add(producer)
         return producersChanged
 
@@ -629,7 +630,7 @@ class Service:
             if service.parent==self:
                 res.append(service)
         return res
-    
+
     def isConsumedBy(self, service):
         if self.role in service.producers:
             for s in service.producers[self.role]:

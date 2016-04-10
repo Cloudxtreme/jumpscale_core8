@@ -1,0 +1,57 @@
+#!/usr/bin/env jspython
+
+from JumpScale import j
+import click
+import sys
+
+def die(self, msg):
+    print(msg)
+    sys.exit(1)
+
+@click.command()
+@click.option('--runid', help='runid of the action to execute')
+@click.option('--key', help='key of the actions to execute')
+@click.option('--path', help='path the ays repository where to execute the action.')
+def cli(runid, key, path):
+    if not path:
+        die('path can not be empty')
+    if not runid:
+        die('runid can not be empty')
+    if not key:
+        die('key can not be empty')
+
+    j.sal.fs.changeDir(path)
+    action = j.actions.load_action(runid, key)
+    service = action.selfobj.service
+    # self.logger.debug("worker start action %s for service %s" % (action.name, service.key))
+    action.state == 'RUNNING'
+    action.save()
+
+    action.execute()
+
+    if action.state == "ERROR":
+        raise j.exceptions.RuntimeError("cannot execute run:%s, failed action." % (action.runid))
+
+    method_hash = service.recipe.actionmethods[action.name].hash
+    hrd_hash = service.hrdhash
+
+    stateitem = service.state.getSet(action.name)
+    stateitem.state = action.state
+    stateitem.last = j.data.time.epoch
+
+    if action.state == "OK":
+        stateitem.hrd_hash = hrd_hash
+        stateitem.actionmethod_hash = method_hash
+        # remove action from redis once done and OK
+        # j.core.db.hdel(action.runid, action.key)
+    else:
+        raise j.exceptions.RuntimeError()
+        self.logger.error("Error during execution of %s" % action.name)
+        # print (msg)
+        service.save()
+        sys.exit(1)
+
+    service.save()
+
+if __name__ == '__main__':
+    cli()

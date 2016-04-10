@@ -7,8 +7,9 @@ from gevent.queue import Queue
 class AYSExecutor:
     def __init__(self, size=4):
         self.logger = j.logger.get('j.atyourservice.geventPool')
-        self.consumer_pool = Pool(size)
+        # self.consumer_pool = Pool(size)
         self.started = False
+        self.cuisine = j.tools.cuisine.local
 
     def start(self, wait=True):
         self.logger.info("Starting AYS.")
@@ -20,7 +21,7 @@ class AYSExecutor:
     def stop(self):
         self.logger.info("Stopping AYS. waiting for the running actions tot finish.")
         self.started = False
-        self.consumer_pool.join(timeout=10)
+        # self.consumer_pool.join(timeout=10)
 
     def wait(self):
         self._reader.join()
@@ -46,14 +47,17 @@ class AYSExecutor:
                 for key in j.core.db.hkeys(hash_key):
                     action = j.actions.load_action(runid=runid, key=key)
                     service = action.selfobj.service
-                    self.logger.debug("service %s action method: %s ready:%s - aysnc:%s " % (service.key, action.name, action.readyForExecute, action.async))
-                    if action.readyForExecute and action.async:
-                        # depsWaiting = action.selfobj.service.getProducersWaiting(action, set())
-                        # if len(depsWaiting) > 0:
-                        #     self.logger.debug("deps waiting %s" % depsWaiting)
-                        #     continue
+                    # self.logger.debug("service %s action method: %s ready:%s - aysnc:%s " % (service.key, action.name, action.readyForExecute, action.async))
+                    if action.name == 'init':
+                        continue
+
+                    if action.readyForExecute and action.async and action.state != 'RUNNING':
                         self.logger.debug('schedule action %s %s' % (runid, action.key))
-                        self.consumer_pool.spawn(self._worker, action)
+                        cmd = "actionexec --runid '%s' --key '%s' --path '%s'" % (runid, action.key, service.path)
+                        screenname = '%s.%s' % (service.key, action.name)
+                        self.cuisine.tmux.executeInScreen(sessionname=runid, screenname=screenname,
+                         cmd=cmd, wait=0, cwd=service.path, env=None, user='root', tmuxuser=None, reset=True)
+                        # self.consumer_pool.spawn(self._worker, action)
 
 
     def _worker(self, action):
