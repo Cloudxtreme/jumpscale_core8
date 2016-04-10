@@ -161,6 +161,7 @@ def destroy():
     """
     reset in current ays repo all services & recipe's
     """
+    j.actions.resetAll()
     j.atyourservice.destroy()
     
 @click.command()

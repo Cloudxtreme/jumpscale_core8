@@ -968,7 +968,7 @@ class CuisineCore():
 
         if profile:
             ppath=self.cuisine.bash.profilePath
-            if ppath!=None:
+            if ppath:
                 cmd=". %s && %s"%(ppath,cmd)
             if showout:
                 self.logger.info("PROFILECMD:%s"%cmd)

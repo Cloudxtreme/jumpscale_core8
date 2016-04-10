@@ -1616,7 +1616,7 @@ class InstallTools():
         else:
             return True
 
-    def getGitRepoArgs(self, url="", dest=None, login=None, passwd=None, reset=False,branch=None,ssh="auto",codeDir=None):
+    def getGitRepoArgs(self, url="", dest=None, login=None, passwd=None, reset=False,branch=None,ssh="auto",codeDir=None,executor=None):
         """
         Extracts and returns data useful in cloning a Git repository.
 
@@ -1678,7 +1678,10 @@ class InstallTools():
 
         if not dest:
             if codeDir==None:
-                codeDir=self.CODEDIR
+                if executor==None:
+                    codeDir=self.CODEDIR
+                else:
+                    codeDir=executor.cuisine.core.dir_paths['codeDir']
             dest = '%(codedir)s/%(type)s/%(account)s/%(repo_name)s' % {
                 'codedir': codeDir,
                 'type': repository_type.lower(),
@@ -1716,7 +1719,7 @@ class InstallTools():
         else:
             executor.checkok = False
 
-        base,provider,account,repo,dest,url=self.getGitRepoArgs(url,dest,login,passwd,reset=reset, ssh=ssh,codeDir=codeDir)
+        base,provider,account,repo,dest,url=self.getGitRepoArgs(url,dest,login,passwd,reset=reset, ssh=ssh,codeDir=codeDir,executor=executor)
 
         if dest is None and branch is None:
             branch = "master"
@@ -2259,6 +2262,7 @@ class Installer():
         filter =
             'j.sal.fs',
             'j.data.hrd',
+            'j.application',
         """
         do.writeFile("%s/hrd/system/logging.hrd" % vardir, C)
 

@@ -460,6 +460,11 @@ class Service:
                     if ays not in self._producers[role]:
                         self._producers[role].append(ays)
 
+                if len(candidates)==1:
+                    self.hrd.set(consumeitem.name,candidates[0].instance)
+                else:
+                    self.hrd.set(consumeitem.name,",".join([item.instance for item in candidates]))
+
             for key, services in self._producers.items():
                 producers = []
                 for service in services:
@@ -603,18 +608,28 @@ class Service:
         return j.tools.executor.getLocal()
 
     def listChildren(self):
+
+
         childDirs = j.sal.fs.listDirsInDir(self.path)
         childs = {}
         for path in childDirs:
             if path.endswith('__pycache__'):
                 continue
             child = j.sal.fs.getBaseName(path)
-            name, instance = child.split("!")
+            key = ServiceKey.parse(path)
             if name not in childs:
-                childs[name] = []
-            childs[name].append(instance)
+                childs[key.name] = []
+            childs[key.name].append(key.instance)
         return childs
 
+    @property
+    def children(self):
+        res=[]
+        for key,service in j.atyourservice.services.items():
+            if service.parent==self:
+                res.append(service)
+        return res
+    
     def isConsumedBy(self, service):
         if self.role in service.producers:
             for s in service.producers[self.role]:

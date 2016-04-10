@@ -110,21 +110,15 @@ class CuisineDocker():
             """ % path
             self.cuisine.core.run_script(C)
 
-    def enableSSH(self, port=None):
-        # if port is not None:
-            # self.cuisine.fw.allowIncoming(port, 'tcp')
-        if self.cuisine.core.executor.type == 'local':
-            return "%s:%s" % (j.sal.docker.docker_host, port)
-        else:
-            connstr = "%s:%s" % (self.executor.addr, port)
-        c2 = j.tools.cuisine.get(connstr)
+    def enableSSH(self, conn_str):
+        c2 = j.tools.cuisine.get(conn_str)
         # change passwd
         c2.user.passwd("root", j.data.idgenerator.generateGUID())
 
         # to make sure we execute all actions again (because is new action)
         j.actions.reset(item=c2.runid)
 
-        return connstr
+        return conn_str
 
     @actionrun(action=True, force=True)
     def ubuntu(self, name="ubuntu1", image='jumpscale/ubuntu1510', ports=None, volumes=None, pubkey=None, aydofs=False):

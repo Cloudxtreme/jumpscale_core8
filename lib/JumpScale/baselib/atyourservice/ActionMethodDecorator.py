@@ -37,6 +37,8 @@ class ActionMethodDecorator(object):
             else:
                 force=self.force
 
+            force=True
+
             if action:
                 args=args[1:]
                 action0=j.actions.add(action=func, actionRecover=None,args=args,kwargs=kwargs,die=False,stdOutput=True,\

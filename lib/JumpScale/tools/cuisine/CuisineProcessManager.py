@@ -6,8 +6,9 @@ import re
 class ProcessManagerBase:
 
     def __init__(self,executor,cuisine):
-        self.executor=executor
-        self.cuisine=cuisine
+        self.executor = executor
+        self.cuisine = cuisine
+        self.logger = j.logger.get('j.tools.cuisine.processmanager')
 
     def get(self, pm = None):
         from ProcessManagerFactory import ProcessManagerFactory
@@ -135,6 +136,7 @@ class CuisineSystemd(ProcessManagerBase):
 class CuisineRunit(ProcessManagerBase):
     def __init__(self,executor,cuisine):
         super().__init__(executor, cuisine)
+        self.timeout = 30
 
     def list(self,prefix=""):
         result = list()
@@ -176,7 +178,16 @@ exec $cmd
         #     self.cuisine.core.file_link( "/etc/getty-5", "/etc/service")
         self.cuisine.core.file_ensure("/etc/service/%s/run" % name,mode="+x")
         self.cuisine.core.file_write("/etc/service/%s/run" % name, sv_text)
-        time.sleep(2)
+        
+        # waiting for runsvdir to populate service directory monitor
+        remain = 300
+        while not self.cuisine.core.dir_exists("/etc/service/%s/supervise" % name):
+            remain = remain - 1
+            if remain == 0:
+                self.logger.warn('/etc/service/%s/supervise: still not exists, check if runsvdir is running, start may fail.' % name)
+                break
+            
+            time.sleep(0.2)
 
         self.start(name)
 
@@ -199,12 +210,12 @@ exec $cmd
         """Tries a `restart` command to the given service, if not successful
         will stop it and start it. If the service is not started, will start it."""
         if self.cuisine.core.file_exists("/etc/service/%s/run" %name ):
-            self.cuisine.core.run("sv -w 15 start /etc/service/%s/" %name, profile=True )
+            self.cuisine.core.run("sv -w %d start /etc/service/%s/" % (self.timeout, name), profile=True)
 
     def stop(self, name, **kwargs):
         """Ensures that the given upstart service is stopped."""
         if self.cuisine.core.file_exists("/etc/service/%s/run" %name):
-            self.cuisine.core.run("sv -w 15 stop /etc/service/%s/" %name, profile=True)
+            self.cuisine.core.run("sv -w %d stop /etc/service/%s/" % (self.timeout, name), profile=True)
 
 class CuisineTmuxec(ProcessManagerBase):
     def __init__(self,executor,cuisine):

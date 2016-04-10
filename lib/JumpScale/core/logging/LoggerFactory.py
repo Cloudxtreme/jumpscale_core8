@@ -30,7 +30,6 @@ class LoggerFactory:
     def __init__(self):
         self.__jslocation__ = "j.logger"
         self.root_logger_name = 'j'
-
         self.handlers = {
             "console": self.__consoleHandler(),
             "file": self.__fileRotateHandler(),
@@ -85,8 +84,9 @@ class LoggerFactory:
     def set_level(self, level):
         self.handlers['console'].setLevel(level)
 
-    def log(self, msg=None, level=None, category=None):
-        self._logger.log(level, msg)
+    def log(self, msg=None, level=logging.INFO, category="j"):
+        logger = j.logger.get(category)
+        logger.log(level, msg)
 
     def _enable_production_mode(self):
         self._logger.handlers = []
@@ -102,7 +102,9 @@ class LoggerFactory:
             self._logger.addHandler(h)
 
     def __fileRotateHandler(self, name='jumpscale'):
-        filename = "/optvar/log/%s.log" % name  # TODO can't use j.dirs here before j.dirs is loaded.
+        if not j.do.exists("%s/log/" % j.do.VARDIR):
+            j.do.createDir("%s/log/" % j.do.VARDIR)
+        filename = "%s/log/%s.log" % (j.do.VARDIR,name)
         formatter = logging.Formatter(FILE_FORMAT)
         fh = logging.handlers.TimedRotatingFileHandler(filename, when='D', interval=1, backupCount=7, encoding=None, delay=False, utc=False, atTime=None)
         fh.setLevel(logging.DEBUG)

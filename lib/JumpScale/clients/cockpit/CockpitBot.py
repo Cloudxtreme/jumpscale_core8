@@ -94,22 +94,21 @@ class CockpitDeployerBot:
         Add a telegram handler to the logger of the deployer objects
         To forward the output of the deployement execution to telegram
         """
-        # q = queue.Queue()
-        # qh = logging.handlers.QueueHandler(q)
-        # qh.setLevel(logging.INFO)
-        th = TelegramHandler(self.bot, chat_id)
-        deployer.logger = j.logger.get('cockpit.installer.%s' % chat_id)
-        deployer.logger.addHandler(th)
+        q = queue.Queue()
+        qh = logging.handlers.QueueHandler(q)
+        qh.setLevel(logging.INFO)
+        deployer.logger = j.logger.get('j.clients.cockpit.installer.%s' % chat_id)
+        deployer.logger.addHandler(qh)
 
-        # ql = logging.handlers.QueueListener(q, th)
-        # ql.start()
-        # return ql
+        th = TelegramHandler(self.bot, chat_id)
+        ql = logging.handlers.QueueListener(q, th)
+        ql.start()
+        return ql
 
     @run_async
     def start(self, bot, update, **kwargs):
         chat_id = update.message.chat_id
         username = update.message.from_user.username
-        print('chatid %s - username %s' % (chat_id, username))
 
         if username in self.deployers:
             deployer = self.deployers[username]
@@ -136,8 +135,7 @@ Let's get to work.""" % update.message.from_user.first_name
             self.logger.error(e)
             self.bot.sendMessage(chat_id=chat_id, text="Error during deployement. Please /start again.")
         finally:
-            pass
-            # ql.stop()
+            ql.stop()
 
     def unknown(self, bot, update):
         bot.sendMessage(chat_id=update.message.chat_id, text="Sorry, I didn't understand that command.")

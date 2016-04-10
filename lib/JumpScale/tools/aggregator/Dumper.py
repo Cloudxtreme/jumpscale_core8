@@ -21,7 +21,7 @@ class BaseDumper(object):
         queue = manager.Queue()
         for ip, ports in self.candidates.items():
             for port in ports:
-                queue.put_nowait(ip, port)
+                queue.put_nowait((ip, port))
 
         pool = multiprocessing.Pool(workers)
 
@@ -52,7 +52,7 @@ class BaseDumper(object):
                 # process took very short time. Give worker time to rest
                 time.sleep(1)
 
-            queue.put_nowait(ip, port)
+            queue.put_nowait((ip, port))
 
     def dump(self, redis):
         """

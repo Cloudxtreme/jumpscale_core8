@@ -71,7 +71,7 @@ class Redis():
         j.clients.redis.executor=self.executor
         j.clients.redis.cuisine=self.cuisine
         j.clients.redis.configureInstance(name, ip, port, maxram=maxram, appendonly=appendonly, \
-            snapshot=snapshot, slave=slave, ismaster=ismaster, passwd=passwd, unixsocket=True)
+            snapshot=snapshot, slave=slave, ismaster=ismaster, passwd=passwd, unixsocket=False)
 
         if start:
             self.start(name)
