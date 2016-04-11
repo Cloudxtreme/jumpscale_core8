@@ -13,7 +13,7 @@ try:
 except:
     pass
 import os
-
+import inspect
 
 import colored_traceback
 colored_traceback.add_hook(always=True)
@@ -22,6 +22,7 @@ class AtYourServiceFactory():
 
     def __init__(self):
         self.__jslocation__ = "j.atyourservice"
+        self.logger = j.logger.get('j.atyourservice.factory')
 
         self._init = False
         self._domains = []
@@ -132,6 +133,9 @@ class AtYourServiceFactory():
             exists = [True for aysfile in tocheck if j.sal.fs.exists('%s/%s' % (path, aysfile))]
             if exists:
                 templ = ServiceTemplate(path, domain=domain)
+                matches = [template for template in llist if template.role == templ.role]
+                for match in matches:
+                    self._checkTemplates(templ, match)
                 llist.append(templ)
 
         if not self._templates:
@@ -172,6 +176,23 @@ class AtYourServiceFactory():
                 service = Service(path=service_path, args=None)
                 self._services[service.key]=service
         return self._services
+
+    def _checkTemplates(self, template1, template2):
+        def _get_actions(template):
+            actions = list()
+            action_to_ignore = ["input", "init", "install", "stop", "start", "monitor", "halt", "check_up", "check_down",
+                                "check_requirements", "cleanup", "data_export", "data_import", "uninstall", "removedata"]
+            if j.sal.fs.exists(template.path_actions):
+                load = loadmodule('templ1.actions', template.path_actions)
+                classes_list = [cls for cls in inspect.getmembers(load) if inspect.isclass(cls[1])]
+                if classes_list:
+                    actions = [func[0] for func in inspect.getmembers(classes_list[0][1]) if inspect.isfunction(func[1]) and func[0] not in action_to_ignore]
+            return actions
+        templ1_actions = set(_get_actions(template1))
+        templ2_actions = set(_get_actions(template2))
+        if templ1_actions.symmetric_difference(templ2_actions):
+            message = ', '.join(templ1_actions.symmetric_difference(templ2_actions))
+            self.logger.warning('Some templates of role "%s" have missing interface functions (%s)' % (template1.role, message))
 
     def _nodechildren(self, service, parent=None, producers=[]):
         parent = {} if parent is None else parent
@@ -635,7 +656,7 @@ class AtYourServiceFactory():
         if key in self.services:
             return self.services[key]
         if die:
-            raise j.exceptions.Input("Cannot get ays service '%s', did not find" % key.short, "ays.getservice")
+            raise j.exceptions.Input("Cannot get ays service '%s', did not find" % key, "ays.getservice")
         else:
             return None
 
